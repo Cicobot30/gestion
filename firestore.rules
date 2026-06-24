@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuth() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function userDoc() { return get(/databases/$(database)/documents/users/$(uid())); }
+    function isAdmin() { return isAuth() && userDoc().data.role == 'admin'; }
+    function isClient() { return isAuth() && userDoc().data.role == 'client'; }
+    function myClientId() { return userDoc().data.clientId; }
+
+    // Users
+    match /users/{userId} {
+      allow read: if isAuth() && (uid() == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Clients
+    match /clients/{clientId} {
+      allow read: if isAdmin() || (isClient() && myClientId() == clientId);
+      allow write: if isAdmin();
+    }
+
+    // Incidents
+    match /incidents/{incidentId} {
+      allow read: if isAdmin() || (isClient() && resource.data.clientId == myClientId());
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Incident updates
+    match /incidentUpdates/{updId} {
+      allow read: if isAdmin() || (isClient() && resource.data.clientId == myClientId());
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Hour packages
+    match /hourPackages/{pkgId} {
+      allow read: if isAdmin() || (isClient() && resource.data.clientId == myClientId());
+      allow create: if isAdmin() || isClient(); // clients can request
+      allow update, delete: if isAdmin();
+    }
+
+    // Invoices
+    match /invoices/{invId} {
+      allow read: if isAdmin() || (isClient() && resource.data.clientId == myClientId());
+      allow write: if isAdmin();
+    }
+
+    // Meta / counters
+    match /meta/{docId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cico — Administración</title>
+<link rel="manifest" href="manifest.json">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar { width: 220px; min-width: 220px; background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; }
+.sidebar-logo { padding: 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 10px; }
+.sidebar-logo img { height: 32px; object-fit: contain; }
+.logo-text { font-size: 1.4rem; font-weight: 800; color: #f1f5f9; letter-spacing: -1px; }
+.logo-text span { color: #3b82f6; }
+.logo-sub { font-size: .68rem; color: #64748b; }
+.nav { flex: 1; padding: 10px 0; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #94a3b8; cursor: pointer; font-size: .88rem; transition: all .15s; }
+.nav-item:hover { background: #263045; color: #e2e8f0; }
+.nav-item.active { background: #1d3a6e; color: #60a5fa; font-weight: 600; }
+.sidebar-footer { padding: 14px 18px; border-top: 1px solid #334155; }
+.user-name { color: #94a3b8; font-weight: 600; font-size: .82rem; margin-bottom: 2px; }
+.user-role { font-size: .72rem; color: #475569; margin-bottom: 8px; }
+.logout-btn { background: none; border: 1px solid #334155; color: #94a3b8; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: .78rem; width: 100%; transition: all .15s; margin-bottom: 4px; }
+.logout-btn:hover { border-color: #f87171; color: #f87171; }
+
+/* Main */
+.main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.topbar { background: #1e293b; border-bottom: 1px solid #334155; padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; }
+.topbar h1 { font-size: 1.15rem; font-weight: 700; color: #f1f5f9; }
+.content { padding: 24px; flex: 1; }
+
+/* Stats */
+.stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px 20px; }
+.stat-label { font-size: .72rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.stat-value { font-size: 1.8rem; font-weight: 700; color: #f1f5f9; }
+.stat-value.blue { color: #60a5fa; }
+.stat-value.green { color: #4ade80; }
+.stat-value.yellow { color: #facc15; }
+.stat-value.red { color: #f87171; }
+
+/* Cards / Tables */
+.card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+th { padding: 10px 14px; text-align: left; font-size: .72rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #334155; background: #0f172a; white-space: nowrap; }
+td { padding: 11px 14px; font-size: .88rem; border-bottom: 1px solid #1e293b; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #263045; }
+.empty { text-align: center; color: #475569; padding: 36px; font-size: .88rem; }
+
+/* Badges */
+.badge { display: inline-block; padding: 3px 9px; border-radius: 100px; font-size: .72rem; font-weight: 600; }
+.badge-blue { background: #1d3a6e; color: #60a5fa; }
+.badge-green { background: #14532d; color: #4ade80; }
+.badge-yellow { background: #422006; color: #facc15; }
+.badge-red { background: #450a0a; color: #f87171; }
+.badge-gray { background: #1e293b; color: #64748b; border: 1px solid #334155; }
+
+/* Buttons */
+.btn { padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: .85rem; font-weight: 600; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: #3b82f6; color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.btn-success { background: #16a34a; color: #fff; }
+.btn-success:hover { background: #15803d; }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+.btn-ghost:hover { background: #263045; color: #e2e8f0; }
+.btn-sm { padding: 4px 9px; font-size: .78rem; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+.modal-overlay.open { display: flex; }
+.modal { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 26px; width: 520px; max-width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 18px; color: #f1f5f9; }
+.form-group { margin-bottom: 13px; }
+.form-group label { display: block; font-size: .78rem; color: #94a3b8; margin-bottom: 4px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 9px 12px; background: #0f172a; border: 1px solid #334155;
+  border-radius: 8px; color: #f1f5f9; font-size: .88rem; outline: none; transition: border-color .2s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #3b82f6; }
+.form-group textarea { resize: vertical; min-height: 65px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.form-check input[type=checkbox] { width: 16px; height: 16px; accent-color: #3b82f6; }
+.form-check label { font-size: .88rem; color: #cbd5e1; cursor: pointer; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
+
+/* Filter bar */
+.filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.filter-bar input, .filter-bar select { padding: 7px 10px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #f1f5f9; font-size: .85rem; outline: none; }
+
+/* Progress */
+.progress-bar { background: #334155; border-radius: 100px; height: 7px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 100px; background: #3b82f6; }
+.progress-fill.warn { background: #facc15; }
+.progress-fill.danger { background: #f87171; }
+
+/* Invoice print */
+.invoice-print { background: #fff; color: #111; padding: 32px; font-family: Arial, sans-serif; }
+
+/* Mobile */
+.hamburger { display: none; background: none; border: none; cursor: pointer; padding: 4px; color: #94a3b8; }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 99; }
+.sidebar-overlay.open { display: block; }
+
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); transition: transform .25s; z-index: 200; }
+  .sidebar.open { transform: translateX(0); }
+  .hamburger { display: flex; }
+  .main { margin-left: 0; }
+  .topbar { padding: 12px 14px; }
+  .content { padding: 12px; }
+  .card { overflow-x: auto; }
+  table { min-width: 500px; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal { width: 100% !important; max-width: 100% !important; border-radius: 16px 16px 0 0 !important; max-height: 92vh !important; padding: 20px 16px; }
+  .form-row { grid-template-columns: 1fr !important; }
+  [style*="grid-template-columns:repeat(3"] { grid-template-columns: repeat(2,1fr) !important; }
+  [style*="grid-template-columns:repeat(4"] { grid-template-columns: repeat(2,1fr) !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <img src="logo.png" alt="Cico" onerror="this.style.display='none'">
+    <div>
+      <div class="logo-text">Ci<span>co</span></div>
+      <div class="logo-sub">Panel de administración</div>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" id="nav-clients" onclick="showSection('clients')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Clientes
+    </div>
+    <div class="nav-item" id="nav-incidents" onclick="showSection('incidents')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Incidencias
+    </div>
+    <div class="nav-item" id="nav-invoices" onclick="showSection('invoices')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      Recibos de pago
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-name" id="sidebar-user"></div>
+    <div class="user-role">Administrador</div>
+    <button class="logout-btn" onclick="openModal('modal-change-pass')">🔑 Cambiar contraseña</button>
+    <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="topbar">
+    <button class="hamburger" onclick="toggleSidebar()">
+      <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    <h1 id="topbar-title">Dashboard</h1>
+    <div></div>
+  </div>
+  <div class="content" id="content"><div class="empty">Cargando...</div></div>
+</main>
+
+<!-- ══ MODALS ══════════════════════════════════════════════════════════════════ -->
+
+<!-- Client modal -->
+<div class="modal-overlay" id="modal-client">
+  <div class="modal" style="width:600px">
+    <h2 id="client-modal-title">Nuevo cliente</h2>
+    <input type="hidden" id="client-id">
+    <div class="form-row">
+      <div class="form-group"><label>Empresa *</label><input id="client-company" placeholder="Nombre empresa"></div>
+      <div class="form-group"><label>Persona de contacto *</label><input id="client-contact" placeholder="Nombre y apellidos"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Email *</label><input type="email" id="client-email-f" placeholder="email@empresa.com"></div>
+      <div class="form-group"><label>Teléfono</label><input id="client-phone" placeholder="+34 600 000 000"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tarifa hora (€) *</label><input type="number" id="client-rate" placeholder="0.00" step="0.01"></div>
+      <div class="form-group"><label>Tipo de facturación</label>
+        <select id="client-billing"><option value="direct">Horas sueltas</option><option value="package">Bolsa de horas</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>NIF/CIF</label><input id="client-nif" placeholder="B12345678"></div>
+      <div class="form-group"><label>Dirección</label><input id="client-address" placeholder="Calle, nº"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Ciudad</label><input id="client-city" placeholder="Madrid"></div>
+      <div class="form-group"><label>Código postal</label><input id="client-postal" placeholder="28001"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>País</label><input id="client-country" value="España"></div>
+      <div class="form-group" id="client-pass-group"><label>Contraseña *</label><input type="text" id="client-password" placeholder="Contraseña de acceso"></div>
+    </div>
+    <div class="form-group"><label>Notas</label><textarea id="client-notes" placeholder="Observaciones internas..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-client')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveClient()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Package modal -->
+<div class="modal-overlay" id="modal-package">
+  <div class="modal" style="width:420px">
+    <h2>Nueva bolsa de horas</h2>
+    <input type="hidden" id="pkg-client-id">
+    <div class="form-group"><label>Etiqueta</label><input id="pkg-label" placeholder="Bolsa de horas · Junio 2025"></div>
+    <div class="form-group"><label>Horas *</label><input type="number" id="pkg-hours" placeholder="10" step="0.5" min="1"></div>
+    <div class="form-group"><label>Tarifa bolsa (€/h)</label><input type="number" id="pkg-rate" placeholder="0.00" step="0.01"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-package')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePackage()">Crear bolsa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Packages view modal -->
+<div class="modal-overlay" id="modal-packages">
+  <div class="modal" style="width:900px;max-height:88vh">
+    <h2 id="modal-packages-title">Bolsas de horas</h2>
+    <div id="modal-packages-content"><div class="empty">Cargando...</div></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-packages')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Package invoice modal -->
+<div class="modal-overlay" id="modal-pkg-invoice">
+  <div class="modal" style="width:460px">
+    <h2>Recibo de pago — Bolsa de horas</h2>
+    <input type="hidden" id="pki-client-id">
+    <input type="hidden" id="pki-package-id">
+    <div id="pki-summary" style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:14px;font-size:.87rem;color:#94a3b8"></div>
+    <div id="pki-total-preview" style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.87rem"></div>
+    <div class="form-group"><label>Notas (opcional)</label><textarea id="pki-notes" rows="2"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pkg-invoice')">Cancelar</button>
+      <button class="btn btn-primary" onclick="createPackageInvoice()">Generar recibo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Incident new/edit modal -->
+<div class="modal-overlay" id="modal-incident">
+  <div class="modal" style="width:540px">
+    <h2 id="inc-modal-title">Nueva incidencia</h2>
+    <input type="hidden" id="inc-id">
+    <div class="form-row">
+      <div class="form-group"><label>Cliente *</label><select id="inc-client"></select></div>
+      <div class="form-group"><label>Bolsa de horas</label><select id="inc-package"><option value="">Sin bolsa (horas sueltas)</option></select></div>
+    </div>
+    <div class="form-group"><label>Título *</label><input id="inc-title" placeholder="Descripción breve del problema"></div>
+    <div class="form-group"><label>Descripción</label><textarea id="inc-description" placeholder="Detalle de la incidencia..."></textarea></div>
+    <div class="form-group"><label>Fecha</label><input type="date" id="inc-date"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-incident')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveIncident()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Incident detail modal -->
+<div class="modal-overlay" id="modal-incident-detail">
+  <div class="modal" style="width:640px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px">
+      <div>
+        <h2 id="detail-title" style="margin-bottom:4px"></h2>
+        <div id="detail-client" style="font-size:.8rem;color:#64748b"></div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteCurrentIncident()">🗑 Eliminar</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap" id="detail-status-btns"></div>
+    <div id="detail-updates" style="margin-bottom:16px"></div>
+    <div id="add-update-form" style="display:none;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div class="form-row">
+        <div class="form-group"><label>Horas *</label><input type="number" id="upd-hours" placeholder="1.5" step="0.25" min="0.25"></div>
+        <div class="form-group"><label>Fecha</label><input type="date" id="upd-date"></div>
+      </div>
+      <div class="form-group"><label>Descripción</label><textarea id="upd-desc" rows="2" placeholder="¿Qué se hizo?"></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="closeAddUpdate()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveUpdate()">Guardar tiempo</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center">
+      <button class="btn btn-ghost btn-sm" id="btn-add-time" onclick="openAddUpdate()">+ Añadir tiempo</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-incident-detail')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invoice modal -->
+<div class="modal-overlay" id="modal-invoice">
+  <div class="modal" style="width:620px">
+    <h2>Generar recibo de pago</h2>
+    <div class="form-group"><label>Cliente *</label><select id="inv-client" onchange="loadIncidentsForInvoice()"></select></div>
+    <div id="inv-incidents-wrap"><div class="empty" style="padding:16px">Selecciona un cliente</div></div>
+    <div id="inv-summary" style="display:none;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:.87rem"></div>
+    <div style="margin:12px 0;display:flex;align-items:center;gap:10px">
+      <input type="checkbox" id="inv-has-vat" onchange="refreshInvSummary()" style="width:16px;height:16px;accent-color:#3b82f6">
+      <label for="inv-has-vat" style="font-size:.88rem;color:#94a3b8;cursor:pointer">Incluir IVA (21%)</label>
+    </div>
+    <div class="form-group"><label>Notas</label><textarea id="inv-notes" placeholder="Opcional..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-invoice')">Cancelar</button>
+      <button class="btn btn-success" onclick="createInvoice()">Emitir recibo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invoice view modal -->
+<div class="modal-overlay" id="modal-invoice-view">
+  <div class="modal" style="width:700px;background:#fff;color:#111">
+    <div id="invoice-print-content"></div>
+    <div class="modal-actions" style="border-top:1px solid #ddd;padding-top:14px;margin-top:14px">
+      <button class="btn btn-ghost" style="color:#334155;border-color:#334155" onclick="closeModal('modal-invoice-view')">Cerrar</button>
+      <button class="btn btn-primary" onclick="printInvoice()">🖨 Imprimir / PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset password modal -->
+<div class="modal-overlay" id="modal-reset-pass">
+  <div class="modal" style="width:380px">
+    <h2>Enviar restablecimiento de contraseña</h2>
+    <p style="font-size:.88rem;color:#94a3b8;margin-bottom:16px">Se enviará un email al cliente para que establezca una nueva contraseña.</p>
+    <div id="reset-email-display" style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 14px;font-size:.9rem;margin-bottom:16px;color:#60a5fa"></div>
+    <input type="hidden" id="reset-client-email">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reset-pass')">Cancelar</button>
+      <button class="btn btn-primary" onclick="sendPasswordReset()">Enviar email</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change admin password -->
+<div class="modal-overlay" id="modal-change-pass">
+  <div class="modal" style="width:380px">
+    <h2>Cambiar contraseña</h2>
+    <div class="form-group"><label>Nueva contraseña</label><input type="password" id="cp-new" placeholder="••••••••"></div>
+    <div class="form-group"><label>Confirmar contraseña</label><input type="password" id="cp-confirm" placeholder="••••••••"></div>
+    <div id="cp-error" style="color:#f87171;font-size:.82rem;margin-bottom:8px;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-change-pass')">Cancelar</button>
+      <button class="btn btn-primary" onclick="changeAdminPassword()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase + Chart.js -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ── Firebase init ──────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyD0jmTWvghH4m8bgekx996LiSpgQoWg_IQ",
+  authDomain: "cico-44dc3.firebaseapp.com",
+  projectId: "cico-44dc3",
+  storageBucket: "cico-44dc3.firebasestorage.app",
+  messagingSenderId: "132860233789",
+  appId: "1:132860233789:web:435db04a7974cd7208c254"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const FS   = firebase.firestore;
+
+// Secondary app for creating client users without logging out admin
+const secondaryApp  = firebase.initializeApp(firebaseConfig, 'Secondary');
+const secondaryAuth = secondaryApp.auth();
+
+// ── Auth guard ─────────────────────────────────────────────────────────────────
+auth.onAuthStateChanged(async user => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  const snap = await db.collection('users').doc(user.uid).get();
+  if (!snap.exists || snap.data().role !== 'admin') { await auth.signOut(); window.location.href = 'index.html'; return; }
+  document.getElementById('sidebar-user').textContent = user.displayName || user.email;
+  showSection('dashboard');
+});
+
+function logout() { auth.signOut(); }
+
+// ── Navigation ─────────────────────────────────────────────────────────────────
+const sectionTitles = { dashboard:'Dashboard', clients:'Clientes', incidents:'Incidencias', invoices:'Recibos de pago' };
+function showSection(s) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('nav-' + s).classList.add('active');
+  document.getElementById('topbar-title').textContent = sectionTitles[s];
+  const fns = { dashboard: renderDashboard, clients: renderClients, incidents: renderIncidents, invoices: renderInvoices };
+  fns[s]();
+}
+
+// ── Mobile sidebar ─────────────────────────────────────────────────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+document.querySelectorAll('.nav-item').forEach(el =>
+  el.addEventListener('click', () => { if (window.innerWidth <= 768) closeSidebar(); })
+);
+
+// ── Modal helpers ──────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── Formatters ─────────────────────────────────────────────────────────────────
+function fmtEur(v) { const n = parseFloat(v); return (isNaN(n)?0:n).toFixed(2).replace('.',',') + ' €'; }
+function fmtHours(h) { const n = parseFloat(h); return (isNaN(n)?0:n).toFixed(2) + ' h'; }
+function fmtDate(d) {
+  if (!d) return '—';
+  const ts = d && d.toDate ? d.toDate() : new Date(d);
+  if (isNaN(ts)) return '—';
+  return ts.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+function fmtDateInput(d) {
+  if (!d) return '';
+  const ts = d && d.toDate ? d.toDate() : new Date(d);
+  return ts.toISOString().slice(0,10);
+}
+function today() { return new Date().toISOString().slice(0,10); }
+
+function incStatusBadge(status) {
+  if (status === 'in_progress') return '<span class="badge badge-blue">🔧 En revisión</span>';
+  if (status === 'resolved')    return '<span class="badge badge-green">✅ Resuelto</span>';
+  return '<span class="badge badge-yellow">⏳ Pendiente</span>';
+}
+function invStatusBadge(status) {
+  if (status === 'sent') return '<span class="badge badge-yellow">📤 Enviado</span>';
+  if (status === 'paid') return '<span class="badge badge-green">✅ Cobrado</span>';
+  return '<span class="badge badge-gray">📝 Borrador</span>';
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────────
+let _charts = {};
+async function renderDashboard() {
+  const el = document.getElementById('content');
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+
+  const [clientsSnap, incSnap, pkgSnap, invSnap] = await Promise.all([
+    db.collection('clients').get(),
+    db.collection('incidents').get(),
+    db.collection('hourPackages').get(),
+    db.collection('invoices').get()
+  ]);
+
+  const totalClients = clientsSnap.size;
+  const incs = incSnap.docs.map(d => ({id:d.id,...d.data()}));
+  const pkgs = pkgSnap.docs.map(d => ({id:d.id,...d.data()}));
+  const invs = invSnap.docs.map(d => ({id:d.id,...d.data()}));
+
+  // Hours: unbilled = sum of hours on unInvoiced non-package incidents
+  // We'll use incident.hours (maintained by updates)
+  const incPending    = incs.filter(i => i.status === 'pending').length;
+  const incInProgress = incs.filter(i => i.status === 'in_progress').length;
+  const incResolved   = incs.filter(i => i.status === 'resolved').length;
+  const hoursUnbilled = incs.filter(i => !i.packageId && !i.invoiced).reduce((s,i) => s+(i.hours||0), 0);
+  const hoursPending  = invs.filter(i => i.status==='sent' && i.type==='hours').reduce((s,i) => s+(i.totalHours||0), 0);
+  const hoursPaid     = invs.filter(i => i.status==='paid' && i.type==='hours').reduce((s,i) => s+(i.totalHours||0), 0);
+  const invDraft      = invs.filter(i => i.status==='draft').length;
+  const invSent       = invs.filter(i => i.status==='sent').length;
+  const invPaid       = invs.filter(i => i.status==='paid').length;
+  const pkgActive     = pkgs.filter(p => p.status==='active').length;
+  const pkgPending    = pkgs.filter(p => p.status==='pending').length;
+  const amountPending = invs.filter(i => i.status==='sent').reduce((s,i) => s+(i.total||0), 0);
+  const amountPaid    = invs.filter(i => i.status==='paid').reduce((s,i) => s+(i.total||0), 0);
+
+  el.innerHTML = `
+    ${pkgPending > 0 ? `<div class="stat-card" style="border-color:#facc15;cursor:pointer;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center" onclick="showSection('clients')">
+      <span style="color:#facc15;font-weight:700">⚡ ${pkgPending} solicitud${pkgPending>1?'es':''} de bolsa pendiente${pkgPending>1?'s':''}</span>
+      <span style="color:#64748b;font-size:.8rem">Ver →</span>
+    </div>` : ''}
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div style="grid-column:1/-1;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#475569">General</div>
+      <div class="stat-card"><div class="stat-label">Clientes activos</div><div class="stat-value blue">${totalClients}</div></div>
+      <div class="stat-card"><div class="stat-label">Pendiente de cobro</div><div class="stat-value yellow">${fmtEur(amountPending)}</div></div>
+      <div class="stat-card"><div class="stat-label">Total facturado</div><div class="stat-value green">${fmtEur(amountPaid)}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div style="grid-column:1/-1;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#475569">Incidencias</div>
+      <div class="stat-card"><div class="stat-label">⏳ Pendientes</div><div class="stat-value yellow">${incPending}</div></div>
+      <div class="stat-card"><div class="stat-label">🔧 En revisión</div><div class="stat-value blue">${incInProgress}</div></div>
+      <div class="stat-card"><div class="stat-label">✅ Resueltas</div><div class="stat-value green">${incResolved}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div style="grid-column:1/-1;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#475569">Horas</div>
+      <div class="stat-card"><div class="stat-label">Sin recibo</div><div class="stat-value yellow">${fmtHours(hoursUnbilled)}</div></div>
+      <div class="stat-card"><div class="stat-label">Pendientes de cobro</div><div class="stat-value red">${fmtHours(hoursPending)}</div></div>
+      <div class="stat-card"><div class="stat-label">Cobradas</div><div class="stat-value green">${fmtHours(hoursPaid)}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+      <div style="grid-column:1/-1;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#475569">Recibos de pago</div>
+      <div class="stat-card"><div class="stat-label">Borrador</div><div class="stat-value">${invDraft}</div></div>
+      <div class="stat-card"><div class="stat-label">Enviados</div><div class="stat-value yellow">${invSent}</div></div>
+      <div class="stat-card"><div class="stat-label">Cobrados</div><div class="stat-value green">${invPaid}</div></div>
+      <div class="stat-card"><div class="stat-label">Bolsas activas</div><div class="stat-value blue">${pkgActive}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <div class="card" style="padding:16px"><div style="font-size:.78rem;color:#64748b;margin-bottom:10px;text-align:center">Incidencias</div><canvas id="chart-inc" height="220"></canvas></div>
+      <div class="card" style="padding:16px"><div style="font-size:.78rem;color:#64748b;margin-bottom:10px;text-align:center">Horas</div><canvas id="chart-hours" height="220"></canvas></div>
+      <div class="card" style="padding:16px"><div style="font-size:.78rem;color:#64748b;margin-bottom:10px;text-align:center">Recibos</div><canvas id="chart-inv" height="220"></canvas></div>
+    </div>
+  `;
+
+  const donut = (id, labels, data, colors) => {
+    if (_charts[id]) _charts[id].destroy();
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    _charts[id] = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:0 }] },
+      options:{ plugins:{ legend:{ position:'bottom', labels:{ color:'#94a3b8', font:{ size:11 } } } }, cutout:'65%' } });
+  };
+  donut('chart-inc',   ['Pendientes','En revisión','Resueltas'], [incPending,incInProgress,incResolved],   ['#facc15','#60a5fa','#4ade80']);
+  donut('chart-hours', ['Sin recibo','Pend. cobro','Cobradas'],  [hoursUnbilled,hoursPending,hoursPaid],    ['#facc15','#f87171','#4ade80']);
+  donut('chart-inv',   ['Borrador','Enviados','Cobrados'],        [invDraft,invSent,invPaid],                ['#94a3b8','#facc15','#4ade80']);
+}
+
+// ── Clients ────────────────────────────────────────────────────────────────────
+let allClients = [];
+
+async function renderClients() {
+  const el = document.getElementById('content');
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+  const snap = await db.collection('clients').orderBy('company').get();
+  allClients = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  // Pending packages
+  const pkgSnap = await db.collection('hourPackages').where('status','==','pending').get();
+  const pendingPkgs = pkgSnap.docs.map(d => ({id:d.id,...d.data()}));
+
+  let pendingHtml = '';
+  if (pendingPkgs.length) {
+    const clientMap = {};
+    allClients.forEach(c => clientMap[c.id] = c);
+    pendingHtml = `<div class="card" style="margin-bottom:16px;border-color:#854d0e">
+      <div style="padding:12px 18px;border-bottom:1px solid #422006;background:#1c1400;display:flex;align-items:center;justify-content:space-between">
+        <span style="color:#facc15;font-weight:700;font-size:.9rem">⚡ Solicitudes de bolsa pendientes (${pendingPkgs.length})</span>
+      </div>
+      <table><thead><tr><th>Cliente</th><th>Bolsa</th><th>Horas</th><th>Fecha</th><th></th></tr></thead><tbody>
+        ${pendingPkgs.map(p => {
+          const c = clientMap[p.clientId] || {};
+          return `<tr>
+            <td><strong>${c.company||'—'}</strong></td>
+            <td>${p.label||'—'}</td>
+            <td><strong>${fmtHours(p.totalHours)}</strong></td>
+            <td>${fmtDate(p.createdAt)}</td>
+            <td><div style="display:flex;gap:6px">
+              <button class="btn btn-success btn-sm" onclick="reviewPackage('${p.id}','approve')">✓ Aceptar</button>
+              <button class="btn btn-danger btn-sm" onclick="reviewPackage('${p.id}','reject')">✕ Rechazar</button>
+            </div></td>
+          </tr>`;
+        }).join('')}
+      </tbody></table>
+    </div>`;
+  }
+
+  el.innerHTML = `
+    ${pendingHtml}
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn btn-primary" onclick="openNewClient()">+ Nuevo cliente</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Empresa</th><th>Contacto</th><th>Tarifa/h</th><th></th></tr></thead>
+        <tbody id="clients-tbody"></tbody>
+      </table>
+    </div>`;
+  renderClientsTable();
+}
+
+function renderClientsTable() {
+  const tbody = document.getElementById('clients-tbody');
+  if (!allClients.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">Sin clientes</td></tr>'; return; }
+  tbody.innerHTML = allClients.map(c => `<tr>
+    <td><strong>${c.company}</strong></td>
+    <td>${c.contact}<br><small style="color:#64748b">${c.email}</small></td>
+    <td>${fmtEur(c.hourlyRate)}/h</td>
+    <td>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="openAddPackage('${c.id}')">+ Bolsa</button>
+        <button class="btn btn-ghost btn-sm" onclick="openPackagesModal('${c.id}')">📦 Bolsas</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditClient('${c.id}')">Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="openResetPass('${c.id}')">🔑</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteClient('${c.id}')">✕</button>
+      </div>
+    </td>
+  </tr>`).join('');
+}
+
+function openNewClient() {
+  document.getElementById('client-modal-title').textContent = 'Nuevo cliente';
+  document.getElementById('client-id').value = '';
+  ['client-company','client-contact','client-email-f','client-phone','client-rate','client-nif','client-address','client-city','client-postal','client-notes','client-password'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('client-country').value = 'España';
+  document.getElementById('client-billing').value = 'direct';
+  document.getElementById('client-pass-group').style.display = '';
+  document.getElementById('client-email-f').disabled = false;
+  openModal('modal-client');
+}
+
+function openEditClient(id) {
+  const c = allClients.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('client-modal-title').textContent = 'Editar cliente';
+  document.getElementById('client-id').value = id;
+  document.getElementById('client-company').value = c.company || '';
+  document.getElementById('client-contact').value = c.contact || '';
+  document.getElementById('client-email-f').value = c.email || '';
+  document.getElementById('client-email-f').disabled = true;
+  document.getElementById('client-phone').value = c.phone || '';
+  document.getElementById('client-rate').value = c.hourlyRate || '';
+  document.getElementById('client-billing').value = c.billingType || 'direct';
+  document.getElementById('client-nif').value = c.nif || '';
+  document.getElementById('client-address').value = c.address || '';
+  document.getElementById('client-city').value = c.city || '';
+  document.getElementById('client-postal').value = c.postal || '';
+  document.getElementById('client-country').value = c.country || 'España';
+  document.getElementById('client-notes').value = c.notes || '';
+  document.getElementById('client-pass-group').style.display = 'none';
+  openModal('modal-client');
+}
+
+async function saveClient() {
+  const id       = document.getElementById('client-id').value;
+  const company  = document.getElementById('client-company').value.trim();
+  const contact  = document.getElementById('client-contact').value.trim();
+  const email    = document.getElementById('client-email-f').value.trim();
+  const phone    = document.getElementById('client-phone').value.trim();
+  const rate     = parseFloat(document.getElementById('client-rate').value) || 0;
+  const billing  = document.getElementById('client-billing').value;
+  const nif      = document.getElementById('client-nif').value.trim();
+  const address  = document.getElementById('client-address').value.trim();
+  const city     = document.getElementById('client-city').value.trim();
+  const postal   = document.getElementById('client-postal').value.trim();
+  const country  = document.getElementById('client-country').value.trim();
+  const notes    = document.getElementById('client-notes').value.trim();
+  const password = document.getElementById('client-password').value;
+
+  if (!company || !contact || !email || !rate) { alert('Completa los campos obligatorios (*)'); return; }
+
+  const data = { company, contact, email, phone, hourlyRate: rate, billingType: billing, nif, address, city, postal, country: country || 'España', notes, updatedAt: FS.FieldValue.serverTimestamp() };
+
+  try {
+    if (!id) {
+      if (!password) { alert('La contraseña es obligatoria para nuevos clientes'); return; }
+      // Create Firebase Auth user via secondary app
+      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+      const uid  = cred.user.uid;
+      await secondaryAuth.signOut();
+      // Create Firestore docs
+      const clientRef = await db.collection('clients').add({ ...data, createdAt: FS.FieldValue.serverTimestamp() });
+      await db.collection('users').doc(uid).set({ email, role: 'client', clientId: clientRef.id, name: contact, createdAt: FS.FieldValue.serverTimestamp() });
+    } else {
+      await db.collection('clients').doc(id).update(data);
+    }
+    closeModal('modal-client');
+    renderClients();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function deleteClient(id) {
+  if (!confirm('¿Eliminar este cliente y todos sus datos?')) return;
+  const batch = db.batch();
+  // Delete related data
+  const [incSnap, pkgSnap, invSnap] = await Promise.all([
+    db.collection('incidents').where('clientId','==',id).get(),
+    db.collection('hourPackages').where('clientId','==',id).get(),
+    db.collection('invoices').where('clientId','==',id).get()
+  ]);
+  incSnap.docs.forEach(d => batch.delete(d.ref));
+  pkgSnap.docs.forEach(d => batch.delete(d.ref));
+  invSnap.docs.forEach(d => batch.delete(d.ref));
+  batch.delete(db.collection('clients').doc(id));
+  // Delete user doc (find by clientId)
+  const userSnap = await db.collection('users').where('clientId','==',id).get();
+  userSnap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+  renderClients();
+}
+
+function openResetPass(id) {
+  const c = allClients.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('reset-email-display').textContent = c.email;
+  document.getElementById('reset-client-email').value = c.email;
+  openModal('modal-reset-pass');
+}
+
+async function sendPasswordReset() {
+  const email = document.getElementById('reset-client-email').value;
+  try {
+    await auth.sendPasswordResetEmail(email);
+    alert('Email de restablecimiento enviado a ' + email);
+    closeModal('modal-reset-pass');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function changeAdminPassword() {
+  const np = document.getElementById('cp-new').value;
+  const cp = document.getElementById('cp-confirm').value;
+  const err = document.getElementById('cp-error');
+  if (!np || np.length < 6) { err.textContent = 'Mínimo 6 caracteres'; err.style.display='block'; return; }
+  if (np !== cp) { err.textContent = 'Las contraseñas no coinciden'; err.style.display='block'; return; }
+  try {
+    await auth.currentUser.updatePassword(np);
+    ['cp-new','cp-confirm'].forEach(id => document.getElementById(id).value='');
+    err.style.display='none';
+    alert('Contraseña actualizada');
+    closeModal('modal-change-pass');
+  } catch(e) { err.textContent = e.message; err.style.display='block'; }
+}
+
+// ── Packages ───────────────────────────────────────────────────────────────────
+function openAddPackage(clientId) {
+  document.getElementById('pkg-client-id').value = clientId;
+  const c = allClients.find(x => x.id === clientId);
+  const suggestedRate = c ? Math.max(0, (c.hourlyRate||0) - 5) : 0;
+  document.getElementById('pkg-label').value = '';
+  document.getElementById('pkg-hours').value = '';
+  document.getElementById('pkg-rate').value = suggestedRate.toFixed(2);
+  openModal('modal-package');
+}
+
+async function savePackage() {
+  const clientId = document.getElementById('pkg-client-id').value;
+  const label    = document.getElementById('pkg-label').value.trim() || 'Bolsa de horas';
+  const hours    = parseFloat(document.getElementById('pkg-hours').value);
+  const rate     = parseFloat(document.getElementById('pkg-rate').value) || 0;
+  if (!hours || hours <= 0) { alert('Introduce las horas'); return; }
+  await db.collection('hourPackages').add({
+    clientId, label, totalHours: hours, usedHours: 0,
+    packageRate: rate, status: 'active', invoicedPackage: false,
+    createdAt: FS.FieldValue.serverTimestamp()
+  });
+  closeModal('modal-package');
+  renderClients();
+}
+
+async function reviewPackage(pkgId, action) {
+  if (!confirm(action==='approve' ? '¿Aceptar esta solicitud?' : '¿Rechazar esta solicitud?')) return;
+  await db.collection('hourPackages').doc(pkgId).update({ status: action==='approve' ? 'active' : 'rejected' });
+  renderClients();
+  renderDashboard();
+}
+
+async function deletePkg(pkgId) {
+  if (!confirm('¿Eliminar esta bolsa?')) return;
+  await db.collection('hourPackages').doc(pkgId).delete();
+  await refreshPackagesModal(_pkgModalClientId);
+  renderClients();
+}
+
+let _pkgModalClientId = null;
+async function openPackagesModal(clientId) {
+  _pkgModalClientId = clientId;
+  const c = allClients.find(x => x.id === clientId);
+  document.getElementById('modal-packages-title').textContent = '📦 Bolsas — ' + (c?.company||'');
+  document.getElementById('modal-packages-content').innerHTML = '<div class="empty">Cargando...</div>';
+  openModal('modal-packages');
+  await refreshPackagesModal(clientId);
+}
+
+async function refreshPackagesModal(clientId) {
+  const snap = await db.collection('hourPackages').where('clientId','==',clientId).orderBy('createdAt','desc').get();
+  const pkgs = snap.docs.map(d => ({id:d.id,...d.data()}));
+  const wrap = document.getElementById('modal-packages-content');
+  if (!pkgs.length) { wrap.innerHTML = '<div class="empty">No hay bolsas registradas</div>'; return; }
+
+  const totalH  = pkgs.reduce((s,p) => s+(p.totalHours||0), 0);
+  const usedH   = pkgs.reduce((s,p) => s+(p.usedHours||0), 0);
+  const remainH = totalH - usedH;
+
+  const statusLabel = { active:'<span class="badge badge-green">Activa</span>', pending:'<span class="badge badge-yellow">Pendiente</span>', rejected:'<span class="badge badge-red">Rechazada</span>' };
+
+  wrap.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <div style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:.68rem;color:#64748b;text-transform:uppercase;margin-bottom:3px">Contratadas</div>
+        <div style="font-size:1.2rem;font-weight:700;color:#f1f5f9">${fmtHours(totalH)}</div>
+      </div>
+      <div style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:.68rem;color:#64748b;text-transform:uppercase;margin-bottom:3px">Consumidas</div>
+        <div style="font-size:1.2rem;font-weight:700;color:#60a5fa">${fmtHours(usedH)}</div>
+      </div>
+      <div style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:.68rem;color:#64748b;text-transform:uppercase;margin-bottom:3px">Pendientes</div>
+        <div style="font-size:1.2rem;font-weight:700;color:#4ade80">${fmtHours(remainH)}</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Etiqueta</th><th>Horas</th><th>Usadas</th><th>Tarifa</th><th>Estado</th><th>Fecha</th><th></th></tr></thead>
+      <tbody>
+        ${pkgs.map(p => {
+          const rem = p.totalHours - p.usedHours;
+          const pct = p.totalHours > 0 ? Math.max(0, Math.min(100, (rem/p.totalHours)*100)) : 0;
+          return `<tr>
+            <td><strong>${p.label}</strong>
+              <div style="margin-top:4px"><div class="progress-bar" style="width:100px"><div class="progress-fill ${pct<20?'danger':pct<40?'warn':''}" style="width:${pct}%"></div></div></div>
+            </td>
+            <td>${fmtHours(p.totalHours)}</td>
+            <td>${fmtHours(p.usedHours)}</td>
+            <td>${p.packageRate > 0 ? fmtEur(p.packageRate)+'/h' : '—'}</td>
+            <td>${statusLabel[p.status]||p.status}</td>
+            <td>${fmtDate(p.createdAt)}</td>
+            <td style="white-space:nowrap">
+              ${p.status==='active' && p.packageRate>0 && !p.invoicedPackage ? `<button class="btn btn-primary btn-sm" onclick="openPkgInvoice('${_pkgModalClientId}','${p.id}',${p.totalHours},${p.packageRate},'${(p.label||'').replace(/'/g,"\\'")}')">🧾 Emitir recibo</button> ` : ''}
+              ${p.status!=='pending' ? `<button class="btn btn-danger btn-sm" onclick="deletePkg('${p.id}')">🗑</button>` : ''}
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+function openPkgInvoice(clientId, pkgId, hours, rate, label) {
+  document.getElementById('pki-client-id').value = clientId;
+  document.getElementById('pki-package-id').value = pkgId;
+  const subtotal = hours * rate;
+  document.getElementById('pki-summary').innerHTML = `<strong style="color:#f1f5f9">${label}</strong><br>${fmtHours(hours)} × ${fmtEur(rate)}/h`;
+  document.getElementById('pki-total-preview').innerHTML = `<span style="color:#64748b">Subtotal:</span> <strong style="color:#f1f5f9">${fmtEur(subtotal)}</strong> <span style="font-size:.78rem;color:#64748b">(IVA no incluido)</span>`;
+  document.getElementById('pki-notes').value = '';
+  openModal('modal-pkg-invoice');
+}
+
+async function createPackageInvoice() {
+  const clientId = document.getElementById('pki-client-id').value;
+  const pkgId    = document.getElementById('pki-package-id').value;
+  const notes    = document.getElementById('pki-notes').value.trim();
+  const pkgSnap  = await db.collection('hourPackages').doc(pkgId).get();
+  const pkg      = pkgSnap.data();
+  const c        = allClients.find(x => x.id === clientId) || {};
+  const subtotal = pkg.totalHours * pkg.packageRate;
+  const number   = await nextInvoiceNumber();
+  await db.collection('invoices').add({
+    clientId, number, totalHours: pkg.totalHours, hourlyRate: pkg.packageRate,
+    subtotal, hasVat: false, vatAmount: 0, total: subtotal,
+    notes, status: 'draft', type: 'package', packageId: pkgId,
+    date: today(), createdAt: FS.FieldValue.serverTimestamp()
+  });
+  await db.collection('hourPackages').doc(pkgId).update({ invoicedPackage: true });
+  closeModal('modal-pkg-invoice');
+  closeModal('modal-packages');
+  alert('Recibo de pago ' + number + ' generado correctamente.');
+  renderInvoices();
+}
+
+// ── Incidents ──────────────────────────────────────────────────────────────────
+let allIncidents = [];
+let _currentIncidentId = null;
+
+async function renderIncidents() {
+  const el = document.getElementById('content');
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+
+  if (!allClients.length) {
+    const snap = await db.collection('clients').orderBy('company').get();
+    allClients = snap.docs.map(d => ({id:d.id,...d.data()}));
+  }
+  const snap = await db.collection('incidents').orderBy('date','desc').get();
+  allIncidents = snap.docs.map(d => ({id:d.id,...d.data()}));
+
+  el.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:center">
+      <div class="filter-bar" style="margin:0">
+        <select id="inc-filter-client" onchange="filterIncidents()">
+          <option value="">Todos los clientes</option>
+          ${allClients.map(c=>`<option value="${c.id}">${c.company}</option>`).join('')}
+        </select>
+        <select id="inc-filter-status" onchange="filterIncidents()">
+          <option value="">Todos los estados</option>
+          <option value="pending">Pendiente</option>
+          <option value="in_progress">En revisión</option>
+          <option value="resolved">Resuelto</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="openNewIncident()">+ Nueva incidencia</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Fecha</th><th>Cliente</th><th>Título</th><th>Horas</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="inc-tbody"></tbody>
+      </table>
+    </div>`;
+  filterIncidents();
+}
+
+function filterIncidents() {
+  const cId = document.getElementById('inc-filter-client')?.value;
+  const st  = document.getElementById('inc-filter-status')?.value;
+  let list  = allIncidents;
+  if (cId) list = list.filter(i => i.clientId === cId);
+  if (st)  list = list.filter(i => i.status === st);
+  const tbody = document.getElementById('inc-tbody');
+  if (!tbody) return;
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin incidencias</td></tr>'; return; }
+  const clientMap = {};
+  allClients.forEach(c => clientMap[c.id] = c.company);
+  tbody.innerHTML = list.map(i => `<tr>
+    <td>${fmtDate(i.date)}</td>
+    <td>${clientMap[i.clientId]||'—'}</td>
+    <td><strong>${i.title}</strong>${i.description?`<br><small style="color:#64748b">${i.description.substring(0,70)}${i.description.length>70?'…':''}</small>`:''}</td>
+    <td>${fmtHours(i.hours||0)}</td>
+    <td>${incStatusBadge(i.status)}${i.packageId?' <span class="badge badge-blue" style="font-size:.68rem">📦 Bolsa</span>':''}</td>
+    <td>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-sm" onclick="openIncidentDetail('${i.id}')">Ver</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditIncident('${i.id}')">✏</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteIncident('${i.id}')">🗑</button>
+      </div>
+    </td>
+  </tr>`).join('');
+}
+
+async function openNewIncident() {
+  if (!allClients.length) {
+    const snap = await db.collection('clients').orderBy('company').get();
+    allClients = snap.docs.map(d => ({id:d.id,...d.data()}));
+  }
+  document.getElementById('inc-modal-title').textContent = 'Nueva incidencia';
+  document.getElementById('inc-id').value = '';
+  document.getElementById('inc-client').innerHTML = allClients.map(c=>`<option value="${c.id}">${c.company}</option>`).join('');
+  document.getElementById('inc-title').value = '';
+  document.getElementById('inc-description').value = '';
+  document.getElementById('inc-date').value = today();
+  await loadPackagesForIncident();
+  openModal('modal-incident');
+}
+
+async function openEditIncident(id) {
+  const i = allIncidents.find(x => x.id === id);
+  if (!i) return;
+  document.getElementById('inc-modal-title').textContent = 'Editar incidencia';
+  document.getElementById('inc-id').value = id;
+  document.getElementById('inc-client').innerHTML = allClients.map(c=>`<option value="${c.id}">${c.company}</option>`).join('');
+  document.getElementById('inc-client').value = i.clientId;
+  document.getElementById('inc-title').value = i.title || '';
+  document.getElementById('inc-description').value = i.description || '';
+  document.getElementById('inc-date').value = fmtDateInput(i.date);
+  await loadPackagesForIncident();
+  document.getElementById('inc-package').value = i.packageId || '';
+  openModal('modal-incident');
+}
+
+async function loadPackagesForIncident() {
+  const clientId = document.getElementById('inc-client').value;
+  const sel = document.getElementById('inc-package');
+  sel.innerHTML = '<option value="">Sin bolsa (horas sueltas)</option>';
+  if (!clientId) return;
+  const snap = await db.collection('hourPackages').where('clientId','==',clientId).where('status','==','active').get();
+  snap.docs.forEach(d => {
+    const p = d.data();
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = `${p.label} (${fmtHours((p.totalHours||0)-(p.usedHours||0))} restantes)`;
+    sel.appendChild(opt);
+  });
+}
+
+async function saveIncident() {
+  const id       = document.getElementById('inc-id').value;
+  const clientId = document.getElementById('inc-client').value;
+  const pkgId    = document.getElementById('inc-package').value;
+  const title    = document.getElementById('inc-title').value.trim();
+  const desc     = document.getElementById('inc-description').value.trim();
+  const date     = document.getElementById('inc-date').value;
+  if (!clientId || !title) { alert('Cliente y título son obligatorios'); return; }
+  const data = { clientId, packageId: pkgId || null, title, description: desc, date, updatedAt: FS.FieldValue.serverTimestamp() };
+  if (!id) {
+    await db.collection('incidents').add({ ...data, status:'pending', hours:0, invoiced:false, createdAt: FS.FieldValue.serverTimestamp() });
+  } else {
+    await db.collection('incidents').doc(id).update(data);
+  }
+  closeModal('modal-incident');
+  renderIncidents();
+}
+
+async function deleteIncident(id) {
+  const snap = await db.collection('incidents').doc(id).get();
+  const inc  = snap.data();
+  if (!snap.exists) return;
+  if (inc.invoiced) { alert('No se puede eliminar una incidencia facturada'); return; }
+  if (!confirm('¿Eliminar esta incidencia?')) return;
+  // Return hours to package
+  if (inc.packageId && inc.hours > 0) {
+    // Sum from updates for accuracy
+    const updSnap = await db.collection('incidentUpdates').where('incidentId','==',id).get();
+    const totalHours = updSnap.docs.reduce((s,d) => s+(d.data().hours||0), 0);
+    await db.collection('hourPackages').doc(inc.packageId).update({ usedHours: FS.FieldValue.increment(-totalHours) });
+    // Delete updates
+    const batch = db.batch();
+    updSnap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  await db.collection('incidents').doc(id).delete();
+  renderIncidents();
+}
+
+// Incident detail
+async function openIncidentDetail(id) {
+  _currentIncidentId = id;
+  const snap = await db.collection('incidents').doc(id).get();
+  const i = {id: snap.id, ...snap.data()};
+  const clientMap = {};
+  allClients.forEach(c => clientMap[c.id] = c.company);
+  document.getElementById('detail-title').textContent = i.title;
+  document.getElementById('detail-client').textContent = clientMap[i.clientId] || '—';
+  highlightStatusButtons(i.status);
+  document.getElementById('btn-add-time').style.display = i.invoiced ? 'none' : '';
+  document.getElementById('add-update-form').style.display = 'none';
+  document.getElementById('upd-date').value = today();
+  await refreshUpdates(id);
+  openModal('modal-incident-detail');
+}
+
+function highlightStatusButtons(current) {
+  const statuses = ['pending','in_progress','resolved'];
+  const labels   = ['⏳ Pendiente','🔧 En revisión','✅ Resuelto'];
+  const colors   = ['#422006','#1d3a6e','#14532d'];
+  const textCols = ['#facc15','#60a5fa','#4ade80'];
+  document.getElementById('detail-status-btns').innerHTML = statuses.map((s,i) => `
+    <button onclick="changeIncidentStatus('${s}')" style="padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:.82rem;font-weight:600;
+      background:${current===s?colors[i]:'#1e293b'};color:${current===s?textCols[i]:'#64748b'};
+      border:1px solid ${current===s?textCols[i]+'44':'#334155'};transition:all .15s">
+      ${labels[i]}
+    </button>`).join('');
+}
+
+async function changeIncidentStatus(status) {
+  if (!_currentIncidentId) return;
+  await db.collection('incidents').doc(_currentIncidentId).update({ status });
+  highlightStatusButtons(status);
+  const idx = allIncidents.findIndex(i => i.id === _currentIncidentId);
+  if (idx >= 0) allIncidents[idx].status = status;
+  filterIncidents();
+}
+
+async function refreshUpdates(incId) {
+  const snap = await db.collection('incidentUpdates').where('incidentId','==',incId).orderBy('date','desc').get();
+  const updates = snap.docs.map(d => ({id:d.id,...d.data()}));
+  const total   = updates.reduce((s,u) => s+(u.hours||0), 0);
+  const wrap    = document.getElementById('detail-updates');
+  if (!updates.length) { wrap.innerHTML = '<div style="color:#475569;font-size:.85rem;text-align:center;padding:12px">Sin registros de tiempo</div>'; return; }
+  wrap.innerHTML = `
+    <div style="font-size:.72rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Tiempo registrado — Total: ${fmtHours(total)}</div>
+    ${updates.map(u => `<div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div>
+        <span style="font-weight:700;color:#60a5fa">${fmtHours(u.hours)}</span>
+        <span style="color:#64748b;font-size:.8rem;margin-left:8px">${fmtDate(u.date)}</span>
+        ${u.description ? `<div style="font-size:.82rem;color:#94a3b8;margin-top:3px">${u.description}</div>` : ''}
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteUpdate('${u.id}','${incId}')">🗑</button>
+    </div>`).join('')}`;
+}
+
+function openAddUpdate()  { document.getElementById('add-update-form').style.display = ''; }
+function closeAddUpdate() { document.getElementById('add-update-form').style.display = 'none'; }
+
+async function saveUpdate() {
+  const hours = parseFloat(document.getElementById('upd-hours').value);
+  const date  = document.getElementById('upd-date').value || today();
+  const desc  = document.getElementById('upd-desc').value.trim();
+  if (!hours || hours <= 0) { alert('Introduce las horas'); return; }
+  const incSnap = await db.collection('incidents').doc(_currentIncidentId).get();
+  const inc     = incSnap.data();
+  const batch   = db.batch();
+  batch.set(db.collection('incidentUpdates').doc(), {
+    incidentId: _currentIncidentId, clientId: inc.clientId,
+    hours, date, description: desc, createdAt: FS.FieldValue.serverTimestamp()
+  });
+  batch.update(db.collection('incidents').doc(_currentIncidentId), {
+    hours: FS.FieldValue.increment(hours),
+    status: inc.status === 'pending' ? 'in_progress' : inc.status
+  });
+  if (inc.packageId) {
+    batch.update(db.collection('hourPackages').doc(inc.packageId), { usedHours: FS.FieldValue.increment(hours) });
+  }
+  await batch.commit();
+  document.getElementById('upd-hours').value = '';
+  document.getElementById('upd-desc').value  = '';
+  closeAddUpdate();
+  await refreshUpdates(_currentIncidentId);
+  const idx = allIncidents.findIndex(i => i.id === _currentIncidentId);
+  if (idx >= 0) allIncidents[idx].hours = (allIncidents[idx].hours||0) + hours;
+  filterIncidents();
+}
+
+async function deleteUpdate(updId, incId) {
+  if (!confirm('¿Eliminar este registro de tiempo?')) return;
+  const updSnap = await db.collection('incidentUpdates').doc(updId).get();
+  const upd     = updSnap.data();
+  const incSnap = await db.collection('incidents').doc(incId).get();
+  const inc     = incSnap.data();
+  const batch   = db.batch();
+  batch.delete(db.collection('incidentUpdates').doc(updId));
+  batch.update(db.collection('incidents').doc(incId), { hours: FS.FieldValue.increment(-(upd.hours||0)) });
+  if (inc.packageId) {
+    batch.update(db.collection('hourPackages').doc(inc.packageId), { usedHours: FS.FieldValue.increment(-(upd.hours||0)) });
+  }
+  await batch.commit();
+  await refreshUpdates(incId);
+}
+
+async function deleteCurrentIncident() {
+  await deleteIncident(_currentIncidentId);
+  closeModal('modal-incident-detail');
+}
+
+// ── Invoices ───────────────────────────────────────────────────────────────────
+let allInvoices = [];
+
+async function renderInvoices() {
+  const el = document.getElementById('content');
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+  const snap = await db.collection('invoices').orderBy('createdAt','desc').get();
+  allInvoices = snap.docs.map(d => ({id:d.id,...d.data()}));
+  if (!allClients.length) {
+    const cs = await db.collection('clients').orderBy('company').get();
+    allClients = cs.docs.map(d => ({id:d.id,...d.data()}));
+  }
+  const clientMap = {};
+  allClients.forEach(c => clientMap[c.id] = c);
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn btn-primary" onclick="openNewInvoice()">+ Generar recibo de pago</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Número</th><th>Cliente</th><th>Fecha</th><th>Horas</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          ${allInvoices.length ? allInvoices.map(inv => {
+            const c = clientMap[inv.clientId] || {};
+            return `<tr>
+              <td><strong>${inv.number}</strong></td>
+              <td>${c.company||'—'}</td>
+              <td>${fmtDate(inv.date)}</td>
+              <td>${fmtHours(inv.totalHours)}</td>
+              <td>${fmtEur(inv.total)}</td>
+              <td>${invStatusBadge(inv.status)}</td>
+              <td>
+                <div style="display:flex;gap:4px;flex-wrap:wrap">
+                  <button class="btn btn-ghost btn-sm" onclick="viewInvoice('${inv.id}')">Ver</button>
+                  ${inv.status==='draft' ? `<button class="btn btn-ghost btn-sm" onclick="changeInvStatus('${inv.id}','sent')">📤 Enviar</button>` : ''}
+                  ${inv.status==='sent'  ? `<button class="btn btn-success btn-sm" onclick="changeInvStatus('${inv.id}','paid')">✅ Cobrado</button>` : ''}
+                  ${inv.status!=='paid'  ? `<button class="btn btn-danger btn-sm" onclick="deleteInvoice('${inv.id}')">🗑</button>` : ''}
+                </div>
+              </td>
+            </tr>`;
+          }).join('') : '<tr><td colspan="7" class="empty">Sin recibos de pago</td></tr>'}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function nextInvoiceNumber() {
+  const ref = db.collection('meta').doc('counters');
+  return db.runTransaction(async t => {
+    const snap = await t.get(ref);
+    const last = snap.exists ? (snap.data().lastInvoiceNumber || 0) : 0;
+    const next = last + 1;
+    t.set(ref, { lastInvoiceNumber: next }, { merge: true });
+    const y = new Date().getFullYear();
+    return `REC-${y}-${String(next).padStart(4,'0')}`;
+  });
+}
+
+async function openNewInvoice() {
+  if (!allClients.length) {
+    const snap = await db.collection('clients').orderBy('company').get();
+    allClients = snap.docs.map(d => ({id:d.id,...d.data()}));
+  }
+  document.getElementById('inv-client').innerHTML = allClients.map(c=>`<option value="${c.id}">${c.company}</option>`).join('');
+  document.getElementById('inv-notes').value = '';
+  document.getElementById('inv-has-vat').checked = false;
+  document.getElementById('inv-incidents-wrap').innerHTML = '<div class="empty" style="padding:16px">Selecciona un cliente</div>';
+  document.getElementById('inv-summary').style.display = 'none';
+  await loadIncidentsForInvoice();
+  openModal('modal-invoice');
+}
+
+let _invSelectedIncidents = [];
+async function loadIncidentsForInvoice() {
+  _invSelectedIncidents = [];
+  const clientId = document.getElementById('inv-client').value;
+  if (!clientId) return;
+  const snap = await db.collection('incidents')
+    .where('clientId','==',clientId)
+    .where('status','==','resolved')
+    .where('invoiced','==',false)
+    .where('packageId','==',null)
+    .get();
+  const incidents = snap.docs.map(d => ({id:d.id,...d.data()}));
+  const wrap = document.getElementById('inv-incidents-wrap');
+  if (!incidents.length) { wrap.innerHTML = '<div class="empty" style="padding:16px">No hay incidencias resueltas pendientes de facturar</div>'; return; }
+  wrap.innerHTML = `<div style="max-height:220px;overflow-y:auto;margin-bottom:8px">
+    ${incidents.map(i => `<label style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #0f172a;cursor:pointer">
+      <input type="checkbox" class="inv-inc-check" data-id="${i.id}" data-hours="${i.hours||0}" style="accent-color:#3b82f6;width:15px;height:15px" onchange="refreshInvSummary()">
+      <span style="flex:1;font-size:.87rem">${i.title}</span>
+      <span style="color:#60a5fa;font-size:.85rem;font-weight:600">${fmtHours(i.hours||0)}</span>
+    </label>`).join('')}
+  </div>`;
+  refreshInvSummary();
+}
+
+function refreshInvSummary() {
+  const checks = document.querySelectorAll('.inv-inc-check:checked');
+  const clientId = document.getElementById('inv-client').value;
+  const c = allClients.find(x => x.id === clientId);
+  const rate = c ? (c.hourlyRate||0) : 0;
+  _invSelectedIncidents = [...checks].map(cb => ({ id: cb.dataset.id, hours: parseFloat(cb.dataset.hours)||0 }));
+  const totalHours = _invSelectedIncidents.reduce((s,i) => s+i.hours, 0);
+  const subtotal   = totalHours * rate;
+  const hasVat     = document.getElementById('inv-has-vat').checked;
+  const vat        = hasVat ? subtotal * 0.21 : 0;
+  const total      = subtotal + vat;
+  const wrap       = document.getElementById('inv-summary');
+  if (!_invSelectedIncidents.length) { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  wrap.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#64748b">Horas</span><span>${fmtHours(totalHours)}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#64748b">Tarifa</span><span>${fmtEur(rate)}/h</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#64748b">Subtotal</span><span>${fmtEur(subtotal)}</span></div>
+    ${hasVat ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#64748b">IVA 21%</span><span>${fmtEur(vat)}</span></div>` : ''}
+    <div style="display:flex;justify-content:space-between;font-weight:700;margin-top:6px;padding-top:6px;border-top:1px solid #334155">
+      <span style="color:#f1f5f9">TOTAL</span><span style="color:#4ade80;font-size:1.1rem">${fmtEur(total)}</span>
+    </div>`;
+}
+
+async function createInvoice() {
+  if (!_invSelectedIncidents.length) { alert('Selecciona al menos una incidencia'); return; }
+  const clientId = document.getElementById('inv-client').value;
+  const c        = allClients.find(x => x.id === clientId) || {};
+  const rate     = c.hourlyRate || 0;
+  const notes    = document.getElementById('inv-notes').value.trim();
+  const hasVat   = document.getElementById('inv-has-vat').checked;
+  const totalHrs = _invSelectedIncidents.reduce((s,i) => s+i.hours, 0);
+  const subtotal = totalHrs * rate;
+  const vat      = hasVat ? subtotal * 0.21 : 0;
+  const total    = subtotal + vat;
+  const number   = await nextInvoiceNumber();
+
+  const batch = db.batch();
+  batch.set(db.collection('invoices').doc(), {
+    clientId, number, totalHours: totalHrs, hourlyRate: rate,
+    subtotal, hasVat, vatAmount: vat, total, notes,
+    status:'draft', type:'hours', packageId: null,
+    date: today(), createdAt: FS.FieldValue.serverTimestamp(),
+    incidentIds: _invSelectedIncidents.map(i => i.id)
+  });
+  _invSelectedIncidents.forEach(i => {
+    batch.update(db.collection('incidents').doc(i.id), { invoiced: true });
+  });
+  await batch.commit();
+  closeModal('modal-invoice');
+  if (confirm(`Recibo ${number} creado. ¿Ver ahora?`)) {
+    await renderInvoices();
+    const snap = await db.collection('invoices').where('number','==',number).limit(1).get();
+    if (!snap.empty) viewInvoice(snap.docs[0].id);
+  } else {
+    renderInvoices();
+  }
+}
+
+async function changeInvStatus(id, status) {
+  await db.collection('invoices').doc(id).update({ status });
+  renderInvoices();
+}
+
+async function deleteInvoice(id) {
+  if (!confirm('¿Eliminar este recibo? Las incidencias volverán a estar pendientes.')) return;
+  const snap = await db.collection('invoices').doc(id).get();
+  const inv  = snap.data();
+  const batch = db.batch();
+  batch.delete(db.collection('invoices').doc(id));
+  if (inv.incidentIds) {
+    inv.incidentIds.forEach(iid => batch.update(db.collection('incidents').doc(iid), { invoiced: false }));
+  }
+  await batch.commit();
+  renderInvoices();
+}
+
+async function viewInvoice(id) {
+  const snap = await db.collection('invoices').doc(id).get();
+  const inv  = {id: snap.id, ...snap.data()};
+  const c    = allClients.find(x => x.id === inv.clientId) || {};
+  document.getElementById('invoice-print-content').innerHTML = buildInvoiceHTML(inv, c);
+  openModal('modal-invoice-view');
+}
+
+function buildInvoiceHTML(inv, c) {
+  return `<div style="font-family:Arial,sans-serif;color:#111;padding:10px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+      <div>
+        <div style="font-size:1.4rem;font-weight:800;color:#1e3a8a">RECIBO DE PAGO</div>
+        <div style="font-size:.85rem;color:#64748b;margin-top:2px">${inv.number}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:700;font-size:1.1rem">Cico</div>
+        <div style="font-size:.8rem;color:#64748b">Consultoría IT</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:24px;gap:20px">
+      <div style="flex:1">
+        <div style="font-size:.68rem;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Cliente</div>
+        <div style="font-weight:700">${c.company||'—'}</div>
+        <div style="font-size:.85rem;color:#374151">${c.contact||''}</div>
+        ${c.nif?`<div style="font-size:.82rem;color:#6b7280">NIF: ${c.nif}</div>`:''}
+        ${c.address?`<div style="font-size:.82rem;color:#6b7280">${c.address}${c.city?', '+c.city:''}${c.postal?' '+c.postal:''}</div>`:''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:.68rem;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Fecha</div>
+        <div style="font-weight:600">${fmtDate(inv.date)}</div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <thead><tr style="background:#f1f5f9">
+        <th style="padding:9px 12px;text-align:left;font-size:.78rem;color:#64748b;border-bottom:2px solid #e2e8f0">Concepto</th>
+        <th style="padding:9px 12px;text-align:right;font-size:.78rem;color:#64748b;border-bottom:2px solid #e2e8f0">Horas</th>
+        <th style="padding:9px 12px;text-align:right;font-size:.78rem;color:#64748b;border-bottom:2px solid #e2e8f0">Precio/h</th>
+        <th style="padding:9px 12px;text-align:right;font-size:.78rem;color:#64748b;border-bottom:2px solid #e2e8f0">Total</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td style="padding:9px 12px;border-bottom:1px solid #e2e8f0">Servicios de consultoría IT <span style="font-size:.75rem;color:#9ca3af">(IVA no incluido)</span></td>
+          <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #e2e8f0">${fmtHours(inv.totalHours)}</td>
+          <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #e2e8f0">${fmtEur(inv.hourlyRate)}/h</td>
+          <td style="padding:9px 12px;text-align:right;border-bottom:1px solid #e2e8f0;font-weight:600">${fmtEur(inv.subtotal)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end">
+      <div style="width:240px">
+        <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.88rem"><span style="color:#6b7280">Subtotal</span><span>${fmtEur(inv.subtotal)}</span></div>
+        ${inv.hasVat?`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.88rem"><span style="color:#6b7280">IVA 21%</span><span>${fmtEur(inv.vatAmount)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;padding:9px 0;border-top:2px solid #1e3a8a;margin-top:4px;font-weight:800;font-size:1.05rem">
+          <span style="color:#1e3a8a">TOTAL</span><span style="color:#1e3a8a">${fmtEur(inv.total)}</span>
+        </div>
+      </div>
+    </div>
+    ${inv.notes?`<div style="margin-top:20px;padding:12px;background:#f8fafc;border-radius:6px;font-size:.83rem;color:#4b5563"><strong>Notas:</strong> ${inv.notes}</div>`:''}
+  </div>`;
+}
+
+function printInvoice() { window.print(); }
+
+</script>
+</body>
+</html>

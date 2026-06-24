@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cico — Acceso</title>
+<link rel="manifest" href="manifest.json">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f172a; color: #e2e8f0;
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.login-wrap { width: 100%; max-width: 420px; }
+.logo-block { text-align: center; margin-bottom: 36px; }
+.logo-block img { max-width: 160px; max-height: 70px; object-fit: contain; margin-bottom: 10px; }
+.logo-name { font-size: 2rem; font-weight: 800; color: #f1f5f9; letter-spacing: -1px; }
+.logo-name span { color: #3b82f6; }
+.logo-sub { font-size: .8rem; color: #475569; margin-top: 4px; }
+.card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 28px; margin-bottom: 16px; }
+.card-title { font-size: .7rem; color: #64748b; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 18px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: .8rem; color: #94a3b8; margin-bottom: 5px; }
+.form-group input {
+  width: 100%; padding: 10px 14px; background: #0f172a; border: 1px solid #334155;
+  border-radius: 8px; color: #f1f5f9; font-size: .9rem; outline: none; transition: border-color .2s;
+}
+.form-group input:focus { border-color: #3b82f6; }
+.btn {
+  width: 100%; padding: 11px 16px; border-radius: 8px; border: none;
+  cursor: pointer; font-size: .9rem; font-weight: 600;
+  transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.btn-google { background: #fff; color: #1a1a1a; }
+.btn-google:hover { background: #f1f5f9; }
+.btn-primary { background: #3b82f6; color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.error-msg {
+  background: #450a0a; border: 1px solid #dc2626; color: #f87171;
+  border-radius: 8px; padding: 10px 14px; font-size: .85rem; margin-top: 12px; display: none;
+}
+.error-msg.show { display: block; }
+.footer-note { text-align: center; font-size: .75rem; color: #334155; margin-top: 20px; }
+@media (max-width: 480px) { .card { padding: 20px; } }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="logo-block">
+    <img src="logo.png" alt="Cico" onerror="this.style.display='none'">
+    <div class="logo-name">Ci<span>co</span></div>
+    <div class="logo-sub">Gestión de consultoría IT</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Acceso administrador</div>
+    <button class="btn btn-google" onclick="loginGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-3.59-13.46-8.83l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuar con Google
+    </button>
+    <div id="admin-error" class="error-msg"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Acceso clientes</div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="client-email" placeholder="tu@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="client-pass" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')loginClient()">
+    </div>
+    <button class="btn btn-primary" onclick="loginClient()">Entrar</button>
+    <div id="client-error" class="error-msg"></div>
+  </div>
+  <div class="footer-note">Cico · Gestión IT</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD0jmTWvghH4m8bgekx996LiSpgQoWg_IQ",
+  authDomain: "cico-44dc3.firebaseapp.com",
+  projectId: "cico-44dc3",
+  storageBucket: "cico-44dc3.firebasestorage.app",
+  messagingSenderId: "132860233789",
+  appId: "1:132860233789:web:435db04a7974cd7208c254"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const ADMIN_EMAIL = 'jose.roldan@montrel.es';
+
+auth.onAuthStateChanged(async user => {
+  if (!user) return;
+  try {
+    const snap = await db.collection('users').doc(user.uid).get();
+    if (!snap.exists) {
+      if (user.email === ADMIN_EMAIL) {
+        await db.collection('users').doc(user.uid).set({
+          email: user.email, name: user.displayName || 'Admin',
+          role: 'admin', createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        window.location.href = 'admin.html';
+      } else {
+        showError('admin-error', 'No tienes acceso. Contacta con el administrador.');
+        await auth.signOut();
+      }
+    } else {
+      const role = snap.data().role;
+      if (role === 'admin') window.location.href = 'admin.html';
+      else if (role === 'client') window.location.href = 'client.html';
+      else { showError('client-error', 'Sin acceso asignado.'); await auth.signOut(); }
+    }
+  } catch(e) { showError('admin-error', e.message); }
+});
+
+async function loginGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ login_hint: ADMIN_EMAIL });
+  try { await auth.signInWithPopup(provider); }
+  catch(e) { showError('admin-error', 'Error: ' + e.message); }
+}
+
+async function loginClient() {
+  const email = document.getElementById('client-email').value.trim();
+  const pass  = document.getElementById('client-pass').value;
+  if (!email || !pass) { showError('client-error', 'Introduce email y contraseña.'); return; }
+  try { await auth.signInWithEmailAndPassword(email, pass); }
+  catch(e) {
+    const msg = (e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found')
+      ? 'Email o contraseña incorrectos.' : e.message;
+    showError('client-error', msg);
+  }
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 6000);
+}
+</script>
+</body>
+</html>
