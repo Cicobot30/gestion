@@ -792,8 +792,10 @@ async function refreshPackagesModal(clientId) {
   const wrap = document.getElementById('modal-packages-content');
   if (!pkgs.length) { wrap.innerHTML = '<div class="empty">No hay bolsas registradas</div>'; return; }
 
-  const totalH  = pkgs.reduce((s,p) => s+(p.totalHours||0), 0);
-  const usedH   = pkgs.reduce((s,p) => s+(p.usedHours||0), 0);
+  // Solo las bolsas activas cuentan en los totales
+  const activePkgs = pkgs.filter(p => p.status === 'active');
+  const totalH  = activePkgs.reduce((s,p) => s+(p.totalHours||0), 0);
+  const usedH   = activePkgs.reduce((s,p) => s+(p.usedHours||0), 0);
   const remainH = totalH - usedH;
 
   const statusLabel = { active:'<span class="badge badge-green">Activa</span>', pending:'<span class="badge badge-yellow">Pendiente</span>', rejected:'<span class="badge badge-red">Rechazada</span>' };
@@ -1169,7 +1171,7 @@ async function renderInvoices() {
                   <button class="btn btn-ghost btn-sm" onclick="viewInvoice('${inv.id}')">Ver</button>
                   ${inv.status==='draft' ? `<button class="btn btn-ghost btn-sm" onclick="changeInvStatus('${inv.id}','sent')">📤 Enviar</button>` : ''}
                   ${inv.status==='sent'  ? `<button class="btn btn-success btn-sm" onclick="changeInvStatus('${inv.id}','paid')">✅ Cobrado</button>` : ''}
-                  ${inv.status!=='paid'  ? `<button class="btn btn-danger btn-sm" onclick="deleteInvoice('${inv.id}')">🗑</button>` : ''}
+                  <button class="btn btn-danger btn-sm" onclick="deleteInvoice('${inv.id}')">🗑</button>
                 </div>
               </td>
             </tr>`;
@@ -1294,9 +1296,12 @@ async function changeInvStatus(id, status) {
 }
 
 async function deleteInvoice(id) {
-  if (!confirm('¿Eliminar este recibo? Las incidencias volverán a estar pendientes.')) return;
   const snap = await db.collection('invoices').doc(id).get();
   const inv  = snap.data();
+  const msg  = inv.status === 'paid'
+    ? '¿Eliminar este recibo cobrado? Esta acción no se puede deshacer.'
+    : '¿Eliminar este recibo? Las incidencias volverán a estar pendientes de facturar.';
+  if (!confirm(msg)) return;
   const batch = db.batch();
   batch.delete(db.collection('invoices').doc(id));
   if (inv.incidentIds) {
