@@ -87,18 +87,46 @@ tr:last-child td { border-bottom: none; }
 .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 4px; color: #94a3b8; }
 .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 99; }
 .sidebar-overlay.open { display: block; }
+button { touch-action: manipulation; }
 
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); transition: transform .25s; z-index: 200; }
+  .sidebar { transform: translateX(-100%); transition: transform .25s; z-index: 200; width: 82vw; max-width: 280px; min-width: unset; }
   .sidebar.open { transform: translateX(0); }
   .hamburger { display: flex; }
   .main { margin-left: 0; }
   .topbar { padding: 12px 14px; }
   .content { padding: 12px; }
-  .card { overflow-x: auto; }
-  table { min-width: 420px; }
+  /* Touch targets */
+  .btn { min-height: 38px; }
+  .btn-sm { min-height: 34px; padding: 5px 10px; font-size: .82rem; }
+  /* Prevent iOS zoom on focus */
+  .form-group input, .form-group select, .form-group textarea { font-size: 16px; }
+  /* Hours picker – bigger touch area */
+  .hours-btn { padding: 14px 8px; font-size: 1rem; }
+  /* Modals – bottom sheet */
   .modal-overlay { align-items: flex-end; padding: 0; }
   .modal { width: 100% !important; max-width: 100% !important; border-radius: 16px 16px 0 0 !important; max-height: 92vh !important; padding: 20px 16px; }
+  /* Tables → Card layout */
+  .card { overflow: visible; }
+  table { min-width: unset !important; }
+  table thead { display: none; }
+  table tbody tr { display: block; border: 1px solid #334155; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+  table tbody tr:hover td { background: transparent; }
+  table td { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #0f172a !important; font-size: .88rem; }
+  table td:last-child { border-bottom: none !important; }
+  table td[data-label]::before { content: attr(data-label); color: #64748b; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; min-width: 72px; padding-top: 2px; white-space: nowrap; }
+  table td:not([data-label]) { flex-wrap: wrap; gap: 6px; padding-top: 8px; padding-bottom: 8px; }
+  table td.empty { justify-content: center; }
+  /* Stat grids */
+  [style*="grid-template-columns:repeat(3"] { grid-template-columns: repeat(2,1fr) !important; }
+}
+
+@media (max-width: 480px) {
+  .content { padding: 10px; }
+  [style*="grid-template-columns:repeat(3"] { grid-template-columns: 1fr !important; }
+  .stat-value { font-size: 1.5rem; }
+  .modal-actions { flex-direction: column-reverse; }
+  .modal-actions .btn { width: 100%; justify-content: center; }
 }
 </style>
 </head>
@@ -459,10 +487,10 @@ async function renderIncidents() {
       <thead><tr><th>Fecha</th><th>Título</th><th>Horas</th><th>Estado</th><th></th></tr></thead>
       <tbody>
         ${incs.map(i => `<tr>
-          <td>${fmtDate(i.date)}</td>
-          <td><strong>${escHtml(i.title)}</strong>${i.description?`<br><small style="color:#64748b">${escHtml(i.description.substring(0,80))}${i.description.length>80?'…':''}</small>`:''}</td>
-          <td>${fmtHours(i.hours||0)}</td>
-          <td>${incStatusBadge(i.status)}${i.packageId?' <span class="badge badge-blue" style="font-size:.68rem">📦</span>':''}</td>
+          <td data-label="Fecha">${fmtDate(i.date)}</td>
+          <td data-label="Título"><span><strong>${escHtml(i.title)}</strong>${i.description?`<br><small style="color:#64748b">${escHtml(i.description.substring(0,80))}${i.description.length>80?'…':''}</small>`:''}</span></td>
+          <td data-label="Horas">${fmtHours(i.hours||0)}</td>
+          <td data-label="Estado">${incStatusBadge(i.status)}${i.packageId?' <span class="badge badge-blue" style="font-size:.68rem">📦</span>':''}</td>
           <td><button class="btn btn-ghost btn-sm" onclick="openIncidentDetail('${i.id}')">Ver</button></td>
         </tr>`).join('')}
       </tbody>
@@ -524,11 +552,11 @@ async function renderInvoices() {
       <thead><tr><th>Número</th><th>Fecha</th><th>Horas</th><th>Total</th><th>Estado</th><th></th></tr></thead>
       <tbody>
         ${invs.map(inv => `<tr>
-          <td><strong>${inv.number}</strong></td>
-          <td>${fmtDate(inv.date)}</td>
-          <td>${fmtHours(inv.totalHours)}</td>
-          <td><strong>${fmtEur(inv.total)}</strong></td>
-          <td>${invStatusBadge(inv.status)}</td>
+          <td data-label="Número"><strong>${inv.number}</strong></td>
+          <td data-label="Fecha">${fmtDate(inv.date)}</td>
+          <td data-label="Horas">${fmtHours(inv.totalHours)}</td>
+          <td data-label="Total"><strong>${fmtEur(inv.total)}</strong></td>
+          <td data-label="Estado">${invStatusBadge(inv.status)}</td>
           <td><button class="btn btn-ghost btn-sm" onclick="viewInvoice('${inv.id}')">Ver</button></td>
         </tr>`).join('')}
       </tbody>
