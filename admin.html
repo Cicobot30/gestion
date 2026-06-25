@@ -128,12 +128,9 @@ tr:hover td { background: #263045; }
 
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 <nav class="sidebar" id="sidebar">
-  <div class="sidebar-logo">
-    <img src="logo.png" alt="Cico" onerror="this.style.display='none'">
-    <div>
-      <div class="logo-text">Ci<span>co</span></div>
-      <div class="logo-sub">Panel de administración</div>
-    </div>
+  <div class="sidebar-logo" style="flex-direction:column;align-items:flex-start;gap:4px">
+    <img src="logo.png" alt="Cico" style="height:36px;max-width:160px;object-fit:contain">
+    <div class="logo-sub">Panel de administración</div>
   </div>
   <div class="nav">
     <div class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')">
