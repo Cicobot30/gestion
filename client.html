@@ -687,8 +687,6 @@ function renderDatos() {
     </div>`;
   }
 
-  const billingLabel = c.billingType === 'package' ? 'Bolsa de horas' : c.billingType === 'direct' ? 'Horas sueltas' : '';
-
   el.innerHTML = `
     <div style="max-width:600px">
       <div class="card" style="padding:20px 24px;margin-bottom:14px">
@@ -702,7 +700,7 @@ function renderDatos() {
         ${fmtRow('Ciudad', c.city)}
         ${fmtRow('Código postal', c.postal)}
         ${fmtRow('País', c.country)}
-        ${billingLabel ? fmtRow('Facturación', billingLabel) : ''}
+        ${c.hourlyRate ? fmtRow('Precio hora', fmtEur(c.hourlyRate) + '/h') : ''}
         <div style="margin-top:16px;padding:11px 14px;background:#0f172a;border:1px solid #334155;border-radius:8px;font-size:.83rem;color:#64748b">
           ℹ️ Para modificar tus datos, contacta con el administrador del sistema.
         </div>
