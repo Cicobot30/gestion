@@ -155,6 +155,10 @@ button { touch-action: manipulation; }
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       Recibos de pago
     </div>
+    <div class="nav-item" id="nav-datos" onclick="showSection('datos')">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Mis datos
+    </div>
   </div>
   <div class="sidebar-footer">
     <div class="user-name" id="sidebar-user"></div>
@@ -203,6 +207,27 @@ button { touch-action: manipulation; }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-request-pkg')">Cancelar</button>
       <button class="btn btn-primary" onclick="submitPkgRequest()">Enviar solicitud</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change password modal (client) -->
+<div class="modal-overlay" id="modal-change-pass-client">
+  <div class="modal" style="width:380px">
+    <h2>Cambiar contraseña</h2>
+    <div class="form-group">
+      <label>Nueva contraseña</label>
+      <input type="password" id="cp-new-c" placeholder="••••••••">
+    </div>
+    <div class="form-group">
+      <label>Confirmar contraseña</label>
+      <input type="password" id="cp-confirm-c" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')changeClientPassword()">
+    </div>
+    <div id="cp-error-c" style="color:#f87171;font-size:.82rem;margin-bottom:8px;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-change-pass-client')">Cancelar</button>
+      <button class="btn btn-primary" onclick="changeClientPassword()">Guardar</button>
     </div>
   </div>
 </div>
@@ -281,13 +306,13 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
-const sectionTitles = { dashboard:'Dashboard', packages:'Bolsas de horas', incidents:'Incidencias', invoices:'Recibos de pago' };
+const sectionTitles = { dashboard:'Dashboard', packages:'Bolsas de horas', incidents:'Incidencias', invoices:'Recibos de pago', datos:'Mis datos' };
 function showSection(s) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.getElementById('nav-' + s).classList.add('active');
   document.getElementById('topbar-title').textContent = sectionTitles[s];
   if (window.innerWidth <= 768) closeSidebar();
-  ({ dashboard: renderDashboard, packages: renderPackages, incidents: renderIncidents, invoices: renderInvoices })[s]();
+  ({ dashboard: renderDashboard, packages: renderPackages, incidents: renderIncidents, invoices: renderInvoices, datos: renderDatos })[s]();
 }
 
 function fmtEur(v)   { const n = parseFloat(v); return (isNaN(n)?0:n).toFixed(2).replace('.',',') + ' €'; }
@@ -648,6 +673,75 @@ function buildInvoiceHTML(inv, c) {
 }
 
 function today() { return new Date().toISOString().slice(0,10); }
+
+// ── Mis datos ──────────────────────────────────────────────────────────────────
+function renderDatos() {
+  const el = document.getElementById('content');
+  const c  = _clientData || {};
+
+  function fmtRow(label, value) {
+    if (!value) return '';
+    return `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #1e293b;align-items:flex-start">
+      <span style="font-size:.78rem;color:#64748b;min-width:150px;flex-shrink:0;padding-top:1px">${label}</span>
+      <span style="font-size:.88rem;color:#f1f5f9">${escHtml(String(value))}</span>
+    </div>`;
+  }
+
+  const billingLabel = c.billingType === 'package' ? 'Bolsa de horas' : c.billingType === 'direct' ? 'Horas sueltas' : '';
+
+  el.innerHTML = `
+    <div style="max-width:600px">
+      <div class="card" style="padding:20px 24px;margin-bottom:14px">
+        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:14px">Datos de la empresa</div>
+        ${fmtRow('Empresa', c.company)}
+        ${fmtRow('Persona de contacto', c.contact)}
+        ${fmtRow('Email', c.email)}
+        ${fmtRow('Teléfono', c.phone)}
+        ${fmtRow('NIF / CIF', c.nif)}
+        ${fmtRow('Dirección', c.address)}
+        ${fmtRow('Ciudad', c.city)}
+        ${fmtRow('Código postal', c.postal)}
+        ${fmtRow('País', c.country)}
+        ${billingLabel ? fmtRow('Facturación', billingLabel) : ''}
+        <div style="margin-top:16px;padding:11px 14px;background:#0f172a;border:1px solid #334155;border-radius:8px;font-size:.83rem;color:#64748b">
+          ℹ️ Para modificar tus datos, contacta con el administrador del sistema.
+        </div>
+      </div>
+      <div class="card" style="padding:20px 24px">
+        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:14px">Acceso y seguridad</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:.9rem;font-weight:600;color:#f1f5f9">Contraseña</div>
+            <div style="font-size:.78rem;color:#64748b;margin-top:2px">Actualiza tu contraseña de acceso</div>
+          </div>
+          <button class="btn btn-ghost" onclick="openModal('modal-change-pass-client')">🔑 Cambiar contraseña</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function changeClientPassword() {
+  const np    = document.getElementById('cp-new-c').value;
+  const nc    = document.getElementById('cp-confirm-c').value;
+  const errEl = document.getElementById('cp-error-c');
+  errEl.style.display = 'none';
+  if (!np)        { errEl.textContent = 'Introduce una contraseña.'; errEl.style.display = 'block'; return; }
+  if (np !== nc)  { errEl.textContent = 'Las contraseñas no coinciden.'; errEl.style.display = 'block'; return; }
+  if (np.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; errEl.style.display = 'block'; return; }
+  try {
+    await _user.updatePassword(np);
+    closeModal('modal-change-pass-client');
+    document.getElementById('cp-new-c').value = '';
+    document.getElementById('cp-confirm-c').value = '';
+    alert('Contraseña actualizada correctamente.');
+  } catch(e) {
+    errEl.textContent = e.code === 'auth/requires-recent-login'
+      ? 'Por seguridad, cierra sesión y vuelve a entrar antes de cambiar la contraseña.'
+      : e.message;
+    errEl.style.display = 'block';
+  }
+}
 
 // ── Report incident (client) ───────────────────────────────────────────────────
 function openReportIncidentModal() {
