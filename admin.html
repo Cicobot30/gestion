@@ -786,8 +786,9 @@ async function openPackagesModal(clientId) {
 }
 
 async function refreshPackagesModal(clientId) {
-  const snap = await db.collection('hourPackages').where('clientId','==',clientId).orderBy('createdAt','desc').get();
-  const pkgs = snap.docs.map(d => ({id:d.id,...d.data()}));
+  const snap = await db.collection('hourPackages').where('clientId','==',clientId).get();
+  const pkgs = snap.docs.map(d => ({id:d.id,...d.data()}))
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
   const wrap = document.getElementById('modal-packages-content');
   if (!pkgs.length) { wrap.innerHTML = '<div class="empty">No hay bolsas registradas</div>'; return; }
 
@@ -1060,8 +1061,9 @@ async function changeIncidentStatus(status) {
 }
 
 async function refreshUpdates(incId) {
-  const snap = await db.collection('incidentUpdates').where('incidentId','==',incId).orderBy('date','desc').get();
-  const updates = snap.docs.map(d => ({id:d.id,...d.data()}));
+  const snap = await db.collection('incidentUpdates').where('incidentId','==',incId).get();
+  const updates = snap.docs.map(d => ({id:d.id,...d.data()}))
+    .sort((a,b) => (b.date > a.date ? 1 : -1));
   const total   = updates.reduce((s,u) => s+(u.hours||0), 0);
   const wrap    = document.getElementById('detail-updates');
   if (!updates.length) { wrap.innerHTML = '<div style="color:#475569;font-size:.85rem;text-align:center;padding:12px">Sin registros de tiempo</div>'; return; }

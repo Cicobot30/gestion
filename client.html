@@ -248,8 +248,9 @@ async function renderDashboard() {
 async function renderPackages() {
   const el = document.getElementById('content');
   el.innerHTML = '<div class="empty">Cargando...</div>';
-  const snap = await db.collection('hourPackages').where('clientId','==',_clientId).orderBy('createdAt','desc').get();
-  const pkgs = snap.docs.map(d => ({id:d.id,...d.data()}));
+  const snap = await db.collection('hourPackages').where('clientId','==',_clientId).get();
+  const pkgs = snap.docs.map(d => ({id:d.id,...d.data()}))
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
   const statusLabel = {
     active:   '<span class="badge badge-green">Activa</span>',
     pending:  '<span class="badge badge-yellow">Pendiente aprobación</span>',
@@ -314,7 +315,7 @@ async function submitPkgRequest() {
 async function renderIncidents() {
   const el = document.getElementById('content');
   el.innerHTML = '<div class="empty">Cargando...</div>';
-  const snap = await db.collection('incidents').where('clientId','==',_clientId).orderBy('date','desc').get();
+  const snap = await db.collection('incidents').where('clientId','==',_clientId).get();
   const incs = snap.docs.map(d => ({id:d.id,...d.data()}));
   if (!incs.length) { el.innerHTML = '<div class="card"><div class="empty">No tienes incidencias registradas</div></div>'; return; }
 
@@ -335,8 +336,9 @@ async function renderIncidents() {
 async function openIncidentDetail(id) {
   const snap = await db.collection('incidents').doc(id).get();
   const inc  = {id:snap.id,...snap.data()};
-  const updSnap = await db.collection('incidentUpdates').where('incidentId','==',id).orderBy('date','desc').get();
-  const updates = updSnap.docs.map(d => ({id:d.id,...d.data()}));
+  const updSnap = await db.collection('incidentUpdates').where('incidentId','==',id).get();
+  const updates = updSnap.docs.map(d => ({id:d.id,...d.data()}))
+    .sort((a,b) => (b.date > a.date ? 1 : -1));
   const total   = updates.reduce((s,u) => s+(u.hours||0), 0);
 
   const modal = document.createElement('div');
@@ -366,7 +368,7 @@ async function openIncidentDetail(id) {
 async function renderInvoices() {
   const el = document.getElementById('content');
   el.innerHTML = '<div class="empty">Cargando...</div>';
-  const snap = await db.collection('invoices').where('clientId','==',_clientId).orderBy('createdAt','desc').get();
+  const snap = await db.collection('invoices').where('clientId','==',_clientId).get();
   const invs = snap.docs.map(d => ({id:d.id,...d.data()}));
   if (!invs.length) { el.innerHTML = '<div class="card"><div class="empty">No tienes recibos de pago</div></div>'; return; }
   el.innerHTML = `<div class="card"><table>
