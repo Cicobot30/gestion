@@ -207,6 +207,25 @@ button { touch-action: manipulation; }
   </div>
 </div>
 
+<!-- Report incident modal -->
+<div class="modal-overlay" id="modal-report-inc">
+  <div class="modal" style="width:460px">
+    <h2>Reportar incidencia</h2>
+    <div class="form-group">
+      <label>Título *</label>
+      <input id="rep-inc-title" placeholder="Describe brevemente el problema">
+    </div>
+    <div class="form-group">
+      <label>Descripción</label>
+      <textarea id="rep-inc-desc" rows="4" placeholder="Detalla el problema: pasos para reproducirlo, mensajes de error..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-report-inc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitReportIncident()">Enviar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Invoice view modal -->
 <div class="modal-overlay" id="modal-invoice-view">
   <div class="modal" style="width:680px;background:#fff;color:#111">
@@ -482,8 +501,11 @@ async function renderIncidents() {
     const snap = await db.collection('incidents').where('clientId','==',_clientId).get();
     const incs = snap.docs.map(d => ({id:d.id,...d.data()}))
       .sort((a,b) => (b.date > a.date ? 1 : -1));
-    if (!incs.length) { el.innerHTML = '<div class="card"><div class="empty">No tienes incidencias registradas</div></div>'; return; }
-    el.innerHTML = `<div class="card"><table>
+    el.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn btn-primary" onclick="openReportIncidentModal()">+ Reportar incidencia</button>
+    </div>`;
+    if (!incs.length) { el.innerHTML += '<div class="card"><div class="empty">No tienes incidencias registradas</div></div>'; return; }
+    el.innerHTML += `<div class="card"><table>
       <thead><tr><th>Fecha</th><th>Título</th><th>Horas</th><th>Estado</th><th></th></tr></thead>
       <tbody>
         ${incs.map(i => `<tr>
@@ -623,6 +645,38 @@ function buildInvoiceHTML(inv, c) {
     </div>
     ${inv.notes?`<div style="margin-top:20px;padding:12px;background:#f8fafc;border-radius:6px;font-size:.83rem;color:#4b5563"><strong>Notas:</strong> ${inv.notes}</div>`:''}
   </div>`;
+}
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+// ── Report incident (client) ───────────────────────────────────────────────────
+function openReportIncidentModal() {
+  document.getElementById('rep-inc-title').value = '';
+  document.getElementById('rep-inc-desc').value  = '';
+  openModal('modal-report-inc');
+}
+
+async function submitReportIncident() {
+  const title = document.getElementById('rep-inc-title').value.trim();
+  const desc  = document.getElementById('rep-inc-desc').value.trim();
+  if (!title) { alert('El título es obligatorio'); return; }
+  try {
+    await db.collection('incidents').add({
+      clientId: _clientId,
+      title,
+      description: desc,
+      status: 'pending',
+      hours: 0,
+      invoiced: false,
+      packageId: null,
+      reportedBy: 'client',
+      date: today(),
+      createdAt: FS.FieldValue.serverTimestamp()
+    });
+    closeModal('modal-report-inc');
+    alert('Incidencia reportada correctamente. Tu administrador la gestionará pronto.');
+    renderIncidents();
+  } catch(e) { alert('Error al enviar: ' + e.message); }
 }
 
 // Escape HTML para evitar errores con caracteres especiales en títulos

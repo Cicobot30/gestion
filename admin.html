@@ -509,14 +509,19 @@ async function renderDashboard() {
   const invDraft      = invs.filter(i => i.status==='draft').length;
   const invSent       = invs.filter(i => i.status==='sent').length;
   const invPaid       = invs.filter(i => i.status==='paid').length;
-  const pkgActive     = pkgs.filter(p => p.status==='active').length;
-  const pkgPending    = pkgs.filter(p => p.status==='pending').length;
-  const amountPending = invs.filter(i => i.status==='sent').reduce((s,i) => s+(i.total||0), 0);
-  const amountPaid    = invs.filter(i => i.status==='paid').reduce((s,i) => s+(i.total||0), 0);
+  const pkgActive       = pkgs.filter(p => p.status==='active').length;
+  const pkgPending      = pkgs.filter(p => p.status==='pending').length;
+  const amountPending   = invs.filter(i => i.status==='sent').reduce((s,i) => s+(i.total||0), 0);
+  const amountPaid      = invs.filter(i => i.status==='paid').reduce((s,i) => s+(i.total||0), 0);
+  const clientReported  = incs.filter(i => i.reportedBy === 'client' && i.status === 'pending').length;
 
   el.innerHTML = `
-    ${pkgPending > 0 ? `<div class="stat-card" style="border-color:#facc15;cursor:pointer;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center" onclick="showSection('clients')">
+    ${pkgPending > 0 ? `<div class="stat-card" style="border-color:#facc15;cursor:pointer;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center" onclick="showSection('clients')">
       <span style="color:#facc15;font-weight:700">⚡ ${pkgPending} solicitud${pkgPending>1?'es':''} de bolsa pendiente${pkgPending>1?'s':''}</span>
+      <span style="color:#64748b;font-size:.8rem">Ver →</span>
+    </div>` : ''}
+    ${clientReported > 0 ? `<div class="stat-card" style="border-color:#3b82f6;cursor:pointer;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center" onclick="showSection('incidents')">
+      <span style="color:#60a5fa;font-weight:700">📩 ${clientReported} incidencia${clientReported>1?'s':''} reportada${clientReported>1?'s':''} por cliente${clientReported>1?'s':''}</span>
       <span style="color:#64748b;font-size:.8rem">Ver →</span>
     </div>` : ''}
 
@@ -916,7 +921,7 @@ async function renderIncidents() {
   allIncidents = snap.docs.map(d => ({id:d.id,...d.data()}));
 
   el.innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:center">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start">
       <div class="filter-bar" style="margin:0">
         <select id="inc-filter-client" onchange="filterIncidents()">
           <option value="">Todos los clientes</option>
@@ -928,12 +933,20 @@ async function renderIncidents() {
           <option value="in_progress">En revisión</option>
           <option value="resolved">Resuelto</option>
         </select>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:.75rem;color:#64748b;white-space:nowrap">Desde</span>
+          <input type="date" id="inc-filter-from" onchange="filterIncidents()">
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-size:.75rem;color:#64748b;white-space:nowrap">Hasta</span>
+          <input type="date" id="inc-filter-to" onchange="filterIncidents()">
+        </div>
       </div>
       <button class="btn btn-primary" onclick="openNewIncident()">+ Nueva incidencia</button>
     </div>
     <div class="card">
       <table>
-        <thead><tr><th>Fecha</th><th>Cliente</th><th>Título</th><th>Horas</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Cliente</th><th>Título</th><th>Horas</th><th>Estado</th><th>Informante</th><th></th></tr></thead>
         <tbody id="inc-tbody"></tbody>
       </table>
     </div>`;
@@ -941,28 +954,50 @@ async function renderIncidents() {
 }
 
 function filterIncidents() {
-  const cId = document.getElementById('inc-filter-client')?.value;
-  const st  = document.getElementById('inc-filter-status')?.value;
-  let list  = allIncidents;
+  const cId  = document.getElementById('inc-filter-client')?.value;
+  const st   = document.getElementById('inc-filter-status')?.value;
+  const from = document.getElementById('inc-filter-from')?.value;
+  const to   = document.getElementById('inc-filter-to')?.value;
+  let list   = allIncidents;
   if (cId) list = list.filter(i => i.clientId === cId);
   if (st)  list = list.filter(i => i.status === st);
+  if (from) {
+    const fromDate = new Date(from);
+    list = list.filter(i => {
+      const d = i.date?.toDate ? i.date.toDate() : new Date(i.date);
+      return d >= fromDate;
+    });
+  }
+  if (to) {
+    const toDate = new Date(to + 'T23:59:59');
+    list = list.filter(i => {
+      const d = i.date?.toDate ? i.date.toDate() : new Date(i.date);
+      return d <= toDate;
+    });
+  }
   const tbody = document.getElementById('inc-tbody');
   if (!tbody) return;
-  if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin incidencias</td></tr>'; return; }
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Sin incidencias</td></tr>'; return; }
   const clientMap = {};
   allClients.forEach(c => clientMap[c.id] = c.company);
-  tbody.innerHTML = list.map(i => `<tr>
+  tbody.innerHTML = list.map(i => {
+    const informante = i.reportedBy === 'client'
+      ? `<span style="color:#60a5fa">${clientMap[i.clientId]||'Cliente'}</span>`
+      : '<span style="color:#94a3b8">Admin</span>';
+    return `<tr>
     <td data-label="Fecha">${fmtDate(i.date)}</td>
     <td data-label="Cliente">${clientMap[i.clientId]||'—'}</td>
     <td data-label="Título"><span><strong>${i.title}</strong>${i.description?`<br><small style="color:#64748b">${i.description.substring(0,70)}${i.description.length>70?'…':''}</small>`:''}</span></td>
     <td data-label="Horas">${fmtHours(i.hours||0)}</td>
     <td data-label="Estado"><span>${incStatusBadge(i.status)}${i.packageId?' <span class="badge badge-blue" style="font-size:.68rem">📦 Bolsa</span>':''}</span></td>
+    <td data-label="Informante">${informante}</td>
     <td>
       <button class="btn btn-ghost btn-sm" onclick="openIncidentDetail('${i.id}')">Ver</button>
       <button class="btn btn-ghost btn-sm" onclick="openEditIncident('${i.id}')">✏</button>
       <button class="btn btn-danger btn-sm" onclick="deleteIncident('${i.id}')">🗑</button>
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 async function openNewIncident() {
