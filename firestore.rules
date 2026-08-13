@@ -2,18 +2,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
     function isAuth() { return request.auth != null; }
     function uid() { return request.auth.uid; }
-    function userDoc() { return get(/databases/$(database)/documents/users/$(uid())); }
-    function isAdmin() { return isAuth() && userDoc().data.role == 'admin'; }
-    function isClient() { return isAuth() && userDoc().data.role == 'client'; }
-    function myClientId() { return userDoc().data.clientId; }
+
+    // Safe admin check: verifica que el documento exista antes de leer el rol
+    function isAdmin() {
+      return isAuth() &&
+             exists(/databases/$(database)/documents/users/$(uid())) &&
+             get(/databases/$(database)/documents/users/$(uid())).data.role == 'admin';
+    }
+
+    function isClient() {
+      return isAuth() &&
+             exists(/databases/$(database)/documents/users/$(uid())) &&
+             get(/databases/$(database)/documents/users/$(uid())).data.role == 'client';
+    }
+
+    function myClientId() {
+      return get(/databases/$(database)/documents/users/$(uid())).data.clientId;
+    }
 
     // Users
     match /users/{userId} {
+      // Cada usuario puede leer su propio doc; el admin puede leer todos
       allow read: if isAuth() && (uid() == userId || isAdmin());
-      allow write: if isAdmin();
+      // Cada usuario puede crear su propio doc (primer login admin);
+      // el admin puede crear docs de otros usuarios (al crear clientes)
+      allow create: if isAuth() && (uid() == userId || isAdmin());
+      // Solo el admin puede modificar o borrar
+      allow update, delete: if isAdmin();
     }
 
     // Clients
@@ -25,19 +42,26 @@ service cloud.firestore {
     // Incidents
     match /incidents/{incidentId} {
       allow read: if isAdmin() || (isClient() && resource.data.clientId == myClientId());
-      allow create, update, delete: if isAdmin();
+      // El cliente puede crear incidencias propias; solo el admin puede editar o borrar
+      allow create: if isAdmin() || (isClient() && request.resource.data.clientId == myClientId());
+      allow update, delete: if isAdmin();
     }
 
     // Incident updates
+    // Verificamos a través de la incidencia padre para evitar problemas
+    // si clientId no está guardado en el propio documento de update
     match /incidentUpdates/{updId} {
-      allow read: if isAdmin() || (isClient() && resource.data.clientId == myClientId());
+      allow read: if isAdmin() ||
+        (isClient() &&
+          exists(/databases/$(database)/documents/incidents/$(resource.data.incidentId)) &&
+          get(/databases/$(database)/documents/incidents/$(resource.data.incidentId)).data.clientId == myClientId());
       allow create, update, delete: if isAdmin();
     }
 
     // Hour packages
     match /hourPackages/{pkgId} {
       allow read: if isAdmin() || (isClient() && resource.data.clientId == myClientId());
-      allow create: if isAdmin() || isClient(); // clients can request
+      allow create: if isAdmin() || isClient();
       allow update, delete: if isAdmin();
     }
 

@@ -396,6 +396,7 @@ button { touch-action: manipulation; }
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <script>
 // ── Firebase init ──────────────────────────────────────────────────────────────
 const firebaseConfig = {
@@ -410,6 +411,25 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 const FS   = firebase.firestore;
+
+// ── EmailJS – notificaciones al cliente ────────────────────────────────────────
+// Rellena estos valores con los de tu cuenta en https://www.emailjs.com
+const EJS_SERVICE    = 'YOUR_SERVICE_ID';   // Ej: 'service_abc1234'
+const EJS_PUBLIC_KEY = 'YOUR_PUBLIC_KEY';   // Ej: 'xxxxxxxxxxxxxxxxxxx'
+const EJS_T_CREATED  = 'YOUR_TEMPLATE_1';  // Plantilla: incidencia creada
+const EJS_T_RESOLVED = 'YOUR_TEMPLATE_2';  // Plantilla: incidencia resuelta
+const EJS_T_INVOICE  = 'YOUR_TEMPLATE_3';  // Plantilla: recibo enviado
+
+if (typeof emailjs !== 'undefined' && EJS_PUBLIC_KEY !== 'YOUR_PUBLIC_KEY') {
+  emailjs.init(EJS_PUBLIC_KEY);
+}
+
+// Envía notificación al cliente (silencia errores — no bloquea el flujo)
+function notifyClient(templateId, params) {
+  if (!templateId || EJS_SERVICE === 'YOUR_SERVICE_ID' || typeof emailjs === 'undefined') return;
+  emailjs.send(EJS_SERVICE, templateId, params)
+    .catch(e => console.warn('[EmailJS]', e.text || e));
+}
 
 // Secondary app for creating client users without logging out admin
 const secondaryApp  = firebase.initializeApp(firebaseConfig, 'Secondary');
@@ -801,6 +821,13 @@ async function reviewPackage(pkgId, action) {
   renderDashboard();
 }
 
+async function renamePackage(pkgId, currentLabel) {
+  const newLabel = prompt('Nuevo nombre de la bolsa:', currentLabel);
+  if (!newLabel || newLabel.trim() === currentLabel) return;
+  await db.collection('hourPackages').doc(pkgId).update({ label: newLabel.trim() });
+  await refreshPackagesModal(_pkgModalClientId);
+}
+
 async function deletePkg(pkgId) {
   if (!confirm('¿Eliminar esta bolsa?')) return;
   await db.collection('hourPackages').doc(pkgId).delete();
@@ -864,8 +891,9 @@ async function refreshPackagesModal(clientId) {
             <td>${statusLabel[p.status]||p.status}</td>
             <td>${fmtDate(p.createdAt)}</td>
             <td style="white-space:nowrap">
-              ${p.status==='active' && p.packageRate>0 && !p.invoicedPackage ? `<button class="btn btn-primary btn-sm" onclick="openPkgInvoice('${_pkgModalClientId}','${p.id}',${p.totalHours},${p.packageRate},'${(p.label||'').replace(/'/g,"\\'")}')">🧾 Emitir recibo</button> ` : ''}
-              ${p.status!=='pending' ? `<button class="btn btn-danger btn-sm" onclick="deletePkg('${p.id}')">🗑</button>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="renamePackage('${p.id}','${(p.label||'').replace(/'/g,"\\'")}')" title="Renombrar">✏️</button>
+              ${p.status==='active' && p.packageRate>0 && !p.invoicedPackage ? ` <button class="btn btn-primary btn-sm" onclick="openPkgInvoice('${_pkgModalClientId}','${p.id}',${p.totalHours},${p.packageRate},'${(p.label||'').replace(/'/g,"\\'")}')">🧾 Emitir recibo</button>` : ''}
+              ${p.status!=='pending' ? ` <button class="btn btn-danger btn-sm" onclick="deletePkg('${p.id}')">🗑</button>` : ''}
             </td>
           </tr>`;
         }).join('')}
@@ -1056,6 +1084,16 @@ async function saveIncident() {
   const data = { clientId, packageId: pkgId || null, title, description: desc, date, updatedAt: FS.FieldValue.serverTimestamp() };
   if (!id) {
     await db.collection('incidents').add({ ...data, status:'pending', hours:0, invoiced:false, createdAt: FS.FieldValue.serverTimestamp() });
+    const client = allClients.find(x => x.id === clientId);
+    if (client?.email) {
+      notifyClient(EJS_T_CREATED, {
+        to_email:       client.email,
+        to_name:        client.contact || client.company,
+        company:        client.company,
+        incident_title: title,
+        incident_date:  date || today(),
+      });
+    }
   } else {
     await db.collection('incidents').doc(id).update(data);
   }
@@ -1121,6 +1159,18 @@ async function changeIncidentStatus(status) {
   const idx = allIncidents.findIndex(i => i.id === _currentIncidentId);
   if (idx >= 0) allIncidents[idx].status = status;
   filterIncidents();
+  if (status === 'resolved') {
+    const inc    = allIncidents.find(i => i.id === _currentIncidentId);
+    const client = allClients.find(c => c.id === inc?.clientId);
+    if (client?.email) {
+      notifyClient(EJS_T_RESOLVED, {
+        to_email:       client.email,
+        to_name:        client.contact || client.company,
+        company:        client.company,
+        incident_title: inc.title,
+      });
+    }
+  }
 }
 
 async function refreshUpdates(incId) {
@@ -1176,15 +1226,26 @@ async function saveUpdate() {
 
 async function deleteUpdate(updId, incId) {
   if (!confirm('¿Eliminar este registro de tiempo?')) return;
-  const updSnap = await db.collection('incidentUpdates').doc(updId).get();
-  const upd     = updSnap.data();
-  const incSnap = await db.collection('incidents').doc(incId).get();
-  const inc     = incSnap.data();
-  const batch   = db.batch();
+  const [updSnap, incSnap] = await Promise.all([
+    db.collection('incidentUpdates').doc(updId).get(),
+    db.collection('incidents').doc(incId).get()
+  ]);
+  const upd = updSnap.data();
+  const inc = incSnap.data();
+
+  // Calcular nuevas horas del bono con suelo en 0 (evita valores negativos)
+  let pkgNewUsed = null;
+  if (inc.packageId) {
+    const pkgSnap = await db.collection('hourPackages').doc(inc.packageId).get();
+    const curUsed = pkgSnap.exists ? (pkgSnap.data().usedHours || 0) : 0;
+    pkgNewUsed    = Math.max(0, curUsed - (upd.hours || 0));
+  }
+
+  const batch = db.batch();
   batch.delete(db.collection('incidentUpdates').doc(updId));
   batch.update(db.collection('incidents').doc(incId), { hours: FS.FieldValue.increment(-(upd.hours||0)) });
-  if (inc.packageId) {
-    batch.update(db.collection('hourPackages').doc(inc.packageId), { usedHours: FS.FieldValue.increment(-(upd.hours||0)) });
+  if (inc.packageId && pkgNewUsed !== null) {
+    batch.update(db.collection('hourPackages').doc(inc.packageId), { usedHours: pkgNewUsed });
   }
   await batch.commit();
   await refreshUpdates(incId);
@@ -1351,6 +1412,20 @@ async function createInvoice() {
 
 async function changeInvStatus(id, status) {
   await db.collection('invoices').doc(id).update({ status });
+  if (status === 'sent') {
+    const inv    = allInvoices.find(i => i.id === id);
+    const client = allClients.find(c => c.id === inv?.clientId);
+    if (client?.email) {
+      notifyClient(EJS_T_INVOICE, {
+        to_email:       client.email,
+        to_name:        client.contact || client.company,
+        company:        client.company,
+        invoice_number: inv.number,
+        invoice_total:  fmtEur(inv.total),
+        invoice_date:   fmtDate(inv.date),
+      });
+    }
+  }
   renderInvoices();
 }
 
