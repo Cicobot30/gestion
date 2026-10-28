@@ -1095,7 +1095,38 @@ async function saveIncident() {
       });
     }
   } else {
-    await db.collection('incidents').doc(id).update(data);
+    // Edición: ajustar horas de bolsas si cambió el packageId
+    const prevSnap = await db.collection('incidents').doc(id).get();
+    const prev     = prevSnap.data();
+    const oldPkg   = prev.packageId || null;
+    const newPkg   = pkgId || null;
+    const incHours = prev.hours || 0;
+
+    if (oldPkg !== newPkg) {
+      const batch = db.batch();
+      batch.update(db.collection('incidents').doc(id), data);
+
+      // Quitar horas de la bolsa anterior
+      if (oldPkg && incHours > 0) {
+        const oldPkgSnap = await db.collection('hourPackages').doc(oldPkg).get();
+        const oldUsed    = oldPkgSnap.exists ? (oldPkgSnap.data().usedHours || 0) : 0;
+        batch.update(db.collection('hourPackages').doc(oldPkg), {
+          usedHours: Math.max(0, oldUsed - incHours)
+        });
+      }
+
+      // Añadir horas a la bolsa nueva
+      if (newPkg && incHours > 0) {
+        batch.update(db.collection('hourPackages').doc(newPkg), {
+          usedHours: FS.FieldValue.increment(incHours)
+        });
+      }
+
+      await batch.commit();
+    } else {
+      // Mismo packageId, solo actualizar datos
+      await db.collection('incidents').doc(id).update(data);
+    }
   }
   closeModal('modal-incident');
   renderIncidents();
